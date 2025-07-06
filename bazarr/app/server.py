@@ -105,7 +105,7 @@ class Server:
 
     def shutdown(self, status=EXIT_NORMAL):
         self.close_all()
-        stop_bazarr(status, False)
+        stop_bazarr(status)
 
     def restart(self):
         self.close_all()
