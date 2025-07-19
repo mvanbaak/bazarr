@@ -491,6 +491,11 @@ export const ProviderList: Readonly<ProviderInfo[]> = [
   },
   { key: "subscenter", description: "Hebrew Subtitles Provider" },
   {
+    key: "subsro",
+    name: "subs.ro",
+    description: "Romanian Subtitles Provider",
+  },
+  {
     key: "subsunacs",
     name: "Subsunacs.net",
     description: "Bulgarian Subtitles Provider",
