@@ -18,6 +18,7 @@ from dynaconf.utils.functional import empty
 from ipaddress import ip_address
 from binascii import hexlify
 from types import MappingProxyType
+from shutil import move
 
 from .get_args import args
 
@@ -487,9 +488,24 @@ while failed_validator:
 
 
 def write_config():
-    write(settings_path=config_yaml_file,
-          settings_data={k.lower(): v for k, v in settings.as_dict().items()},
-          merge=False)
+    if settings.as_dict() == Dynaconf(
+        settings_file=config_yaml_file,
+        core_loaders=['YAML']
+    ).as_dict():
+        logging.debug("Nothing changed when comparing to config file. Skipping write to file.")
+    else:
+        try:
+            write(settings_path=config_yaml_file + '.tmp',
+                  settings_data={k.lower(): v for k, v in settings.as_dict().items()},
+                  merge=False)
+        except Exception as error:
+            logging.exception(f"Exception raised while trying to save temporary settings file: {error}")
+        else:
+            try:
+                move(config_yaml_file + '.tmp', config_yaml_file)
+            except Exception as error:
+                logging.exception(f"Exception raised while trying to overwrite settings file with temporary settings "
+                                  f"file: {error}")
 
 
 base_url = settings.general.base_url.rstrip('/')
