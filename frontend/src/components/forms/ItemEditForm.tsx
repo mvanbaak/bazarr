@@ -41,6 +41,7 @@ const ItemEditForm: FunctionComponent<Props> = ({
     },
   });
 
+  // Item code2 may be undefined or null if the audio language is Unknown
   const options = useSelectorOptions(
     item?.audio_language ?? [],
     (v) => v.name,
