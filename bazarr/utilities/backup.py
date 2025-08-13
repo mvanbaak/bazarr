@@ -195,7 +195,7 @@ def backup_rotation():
 
     logging.debug(f'Cleaning up backup files older than {backup_retention} days')
     for file in backup_files:
-        if (datetime.fromtimestamp(os.path.getmtime(file)) + timedelta(days=int(backup_retention)) <
+        if (datetime.fromtimestamp(os.path.getmtime(file), tz=timezone.utc) + timedelta(days=int(backup_retention)) <
                 datetime.now(tz=timezone.utc)):
             logging.debug(f'Deleting old backup file {file}')
             try:
