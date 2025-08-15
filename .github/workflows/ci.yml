@@ -16,6 +16,7 @@ on:
     branches: [development]
 
 env:
+  ROOT_DIRECTORY: .
   UI_DIRECTORY: ./frontend
   SCRIPTS_DIRECTORY: .github/scripts
   UI_ARTIFACT_NAME: ui
