@@ -17,6 +17,7 @@ on:
 
 env:
   UI_DIRECTORY: ./frontend
+  SCRIPTS_DIRECTORY: .github/scripts
   UI_ARTIFACT_NAME: ui
 
 jobs:
@@ -91,15 +92,4 @@ jobs:
 
       - name: Unit Tests
         run: |
-          python3 bazarr.py --no-update &
-          PID=$!
-          sleep 15
-          if kill -s 0 $PID
-          then
-            echo "**** Bazarr launch successful ****"
-            kill $PID
-            exit 0
-          else
-          echo "**** Bazarr launch failed ****"
-            exit 1
-          fi
+          bash '${{ env.SCRIPTS_DIRECTORY }}/build_test.sh'
