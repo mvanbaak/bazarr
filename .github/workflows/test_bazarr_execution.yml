@@ -6,6 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ROOT_DIRECTORY: .
+      UI_DIRECTORY: ./frontend
       SCRIPTS_DIRECTORY: .github/scripts
       FETCH_DEPTH: 15 # Should be enough
 
