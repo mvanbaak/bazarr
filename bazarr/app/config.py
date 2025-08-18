@@ -5,6 +5,11 @@ import os
 import ast
 import logging
 import re
+import secrets
+import threading
+import time
+import configparser
+import yaml
 
 from urllib.parse import quote_plus
 from utilities.binaries import BinaryNotFound, get_binary
@@ -236,6 +241,17 @@ validators = [
     Validator('plex.set_episode_added', must_exist=True, default=False, is_type_of=bool),
     Validator('plex.update_movie_library', must_exist=True, default=False, is_type_of=bool),
     Validator('plex.update_series_library', must_exist=True, default=False, is_type_of=bool),
+    # OAuth fields
+    Validator('plex.token', must_exist=True, default='', is_type_of=str),
+    Validator('plex.username', must_exist=True, default='', is_type_of=str),
+    Validator('plex.email', must_exist=True, default='', is_type_of=str),
+    Validator('plex.user_id', must_exist=True, default='', is_type_of=str),
+    Validator('plex.auth_method', must_exist=True, default='apikey', is_type_of=str, is_in=['apikey', 'oauth']),
+    Validator('plex.encryption_key', must_exist=True, default='', is_type_of=str),
+    Validator('plex.server_machine_id', must_exist=True, default='', is_type_of=str),
+    Validator('plex.server_name', must_exist=True, default='', is_type_of=str),
+    Validator('plex.server_url', must_exist=True, default='', is_type_of=str),
+    Validator('plex.server_local', must_exist=True, default=False, is_type_of=bool),
 
     # proxy section
     Validator('proxy.type', must_exist=True, default=None, is_type_of=(NoneType, str),
@@ -435,8 +451,6 @@ validators = [
 
 
 def convert_ini_to_yaml(config_file):
-    import configparser
-    import yaml
     config_object = configparser.RawConfigParser()
     file = open(config_file, "r")
     config_object.read_file(file)
@@ -479,8 +493,11 @@ while failed_validator:
         failed_validator = False
     except ValidationError as e:
         current_validator_details = e.details[0][0]
+        logging.error(f"Validator failed for {current_validator_details.names[0]}: {e}")
         if hasattr(current_validator_details, 'default') and current_validator_details.default is not empty:
+            old_value = settings.get(current_validator_details.names[0], 'undefined')
             settings[current_validator_details.names[0]] = current_validator_details.default
+            logging.info(f"VALIDATOR RESET: {current_validator_details.names[0]} from '{old_value}' to '{current_validator_details.default}'")
         else:
             logging.critical(f"Value for {current_validator_details.names[0]} doesn't pass validation and there's no "
                              f"default value. This issue must be reported to and fixed by the development team. "
@@ -947,3 +964,45 @@ def sync_checker(subtitle):
     else:
         logging.debug("BAZARR Sync checker not passed. Won't sync.")
         return False
+
+
+# Plex OAuth Migration Functions
+def migrate_plex_config():
+    # Generate encryption key if not exists or is empty
+    existing_key = settings.plex.get('encryption_key')
+    if not existing_key or existing_key.strip() == "":
+        logging.info("Generating new encryption key for Plex token storage")
+        key = secrets.token_urlsafe(32)
+        settings.plex.encryption_key = key
+        write_config()
+        logging.info("Plex encryption key generated")
+
+
+def initialize_plex():
+    """
+    Initialize Plex configuration on startup.
+    Call this from your main application initialization.
+    """
+    # Run migration
+    migrate_plex_config()
+    
+    # Start cache cleanup if OAuth is enabled
+    if settings.general.use_plex and settings.plex.get('auth_method') == 'oauth':
+        try:
+            from api.plex.security import pin_cache
+            
+            def cleanup_task():
+                while True:
+                    time.sleep(300)  # 5 minutes
+                    try:
+                        pin_cache.cleanup_expired()
+                    except Exception:
+                        pass
+            
+            cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
+            cleanup_thread.start()
+            logging.info("Plex cache cleanup started")
+        except ImportError:
+            logging.warning("Could not start Plex cache cleanup - module not found")
+    
+    logging.info("Plex configuration initialized")
