@@ -4,16 +4,18 @@ import time
 import uuid
 import requests
 import xml.etree.ElementTree as ET
-import threading
+import logging
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import request, current_app
+from flask import request
 from flask_restx import Resource, reqparse, abort
 
 from . import api_ns_plex
 from .exceptions import *
-from .security import TokenManager, sanitize_log_data, pin_cache, get_or_create_encryption_key, sanitize_server_url, encrypt_api_key
+from .security import (TokenManager, sanitize_log_data, pin_cache, get_or_create_encryption_key, sanitize_server_url,
+                       encrypt_api_key)
 from app.config import settings, write_config
+
 
 @api_ns_plex.errorhandler(Exception)
 def handle_api_exception(error):
@@ -31,6 +33,8 @@ def handle_api_exception(error):
         'error': str(error),
         'code': 'UNKNOWN_ERROR'
     }, 500
+
+
 def get_token_manager():
     # Check if encryption key exists before attempting to create one
     key_existed = bool(getattr(settings.plex, 'encryption_key', None))
@@ -40,10 +44,12 @@ def get_token_manager():
         write_config()
     return TokenManager(key)
 
+
 def encrypt_token(token):
     if not token:
         return None
     return get_token_manager().encrypt(token)
+
 
 def decrypt_token(encrypted_token):
     if not encrypted_token:
@@ -51,15 +57,17 @@ def decrypt_token(encrypted_token):
     try:
         return get_token_manager().decrypt(encrypted_token)
     except Exception as e:
-        current_app.logger.error(f"Token decryption failed: {type(e).__name__}")
+        logging.error(f"Token decryption failed: {type(e).__name__}")
         raise InvalidTokenError("Failed to decrypt token")
+
 
 def generate_client_id():
     return str(uuid.uuid4())
 
+
 def get_decrypted_token():
     auth_method = settings.plex.get('auth_method', 'apikey')
-    
+
     if auth_method == 'oauth':
         token = settings.plex.get('token')
         if not token:
@@ -69,19 +77,20 @@ def get_decrypted_token():
         apikey = settings.plex.get('apikey')
         if not apikey:
             return None
-        
+
         if not settings.plex.get('apikey_encrypted', False):
             if encrypt_api_key():
                 apikey = settings.plex.get('apikey')
             else:
                 return None
-        
+
         return decrypt_token(apikey)
+
 
 def validate_plex_token(token):
     if not token:
         raise InvalidTokenError("Empty token")
-        
+
     try:
         headers = {
             'X-Plex-Token': token,
@@ -97,47 +106,49 @@ def validate_plex_token(token):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Plex token validation failed: {type(e).__name__}")
+        logging.error(f"Plex token validation failed: {type(e).__name__}")
         raise PlexConnectionError(f"Failed to validate token: {str(e)}")
+
 
 def refresh_token(token):
     if not token:
         raise InvalidTokenError("Empty token")
-        
+
     try:
         headers = {
             'X-Plex-Token': token,
             'Accept': 'application/json'
         }
-        
+
         response = requests.get(
             'https://plex.tv/api/v2/ping',
             headers=headers,
             timeout=10
         )
-        
+
         if response.status_code == 401:
             raise TokenExpiredError("Token expired")
-        
+
         response.raise_for_status()
         return token
-        
+
     except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Plex token refresh failed: {type(e).__name__}")
+        logging.error(f"Plex token refresh failed: {type(e).__name__}")
         raise PlexConnectionError(f"Failed to refresh token: {str(e)}")
+
 
 def test_plex_connection(uri, token):
     if not uri or not token:
         return False, None
-        
+
     try:
         uri = sanitize_server_url(uri)
-        
+
         headers = {
             'X-Plex-Token': token,
             'Accept': 'application/json'
         }
-        
+
         start_time = time.time()
         response = requests.get(
             f"{uri}/identity",
@@ -146,14 +157,15 @@ def test_plex_connection(uri, token):
             verify=False
         )
         latency_ms = int((time.time() - start_time) * 1000)
-        
+
         if response.status_code == 200:
             return True, latency_ms
         else:
             return False, None
     except Exception as e:
-        current_app.logger.debug(f"Plex connection test failed for {sanitize_log_data(uri)}: {type(e).__name__}")
+        logging.debug(f"Plex connection test failed for {sanitize_log_data(uri)}: {type(e).__name__}")
         return False, None
+
 
 @api_ns_plex.route('plex/oauth/pin')
 class PlexPin(Resource):
@@ -165,9 +177,9 @@ class PlexPin(Resource):
         try:
             args = self.post_request_parser.parse_args()
             client_id = args.get('clientId') if args.get('clientId') else generate_client_id()
-            
+
             state_token = get_token_manager().generate_state_token()
-            
+
             headers = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -179,7 +191,7 @@ class PlexPin(Resource):
                 'X-Plex-Device': 'Bazarr',
                 'X-Plex-Device-Name': 'Bazarr Web'
             }
-            
+
             response = requests.post(
                 'https://plex.tv/api/v2/pins',
                 headers=headers,
@@ -187,16 +199,16 @@ class PlexPin(Resource):
                 timeout=10
             )
             response.raise_for_status()
-            
+
             pin_data = response.json()
-            
+
             pin_cache.set(str(pin_data['id']), {
                 'code': pin_data['code'],
                 'client_id': client_id,
                 'state_token': state_token,
                 'created_at': datetime.now().isoformat()
             })
-            
+
             return {
                 'data': {
                     'pinId': pin_data['id'],
@@ -206,73 +218,75 @@ class PlexPin(Resource):
                     'authUrl': f"https://app.plex.tv/auth#?clientID={client_id}&code={pin_data['code']}&context[device][product]=Bazarr"
                 }
             }
-            
+
         except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"Failed to create PIN: {type(e).__name__}")
+            logging.error(f"Failed to create PIN: {type(e).__name__}")
             raise PlexConnectionError(f"Failed to create PIN: {str(e)}")
 
     def get(self):
         abort(405, "Method not allowed. Use POST.")
+
 
 @api_ns_plex.route('plex/oauth/pin/<string:pin_id>/check')
 class PlexPinCheck(Resource):
     def get(self, pin_id):
         try:
             state_param = request.args.get('state')
-            
+
             cached_pin = pin_cache.get(pin_id)
             if not cached_pin:
                 raise PlexPinExpiredError("PIN not found or expired")
-            
+
             if state_param:
                 stored_state = cached_pin.get('state_token')
                 if not stored_state or not get_token_manager().validate_state_token(state_param, stored_state):
-                    current_app.logger.warning(f"CSRF state validation failed for PIN {pin_id}")
-            
+                    logging.warning(f"CSRF state validation failed for PIN {pin_id}")
+
             headers = {
                 'Accept': 'application/json',
                 'X-Plex-Client-Identifier': cached_pin['client_id']
             }
-            
+
             response = requests.get(
                 f'https://plex.tv/api/v2/pins/{pin_id}',
                 headers=headers,
                 timeout=10
             )
-            
+
             if response.status_code == 404:
                 pin_cache.delete(pin_id)
                 raise PlexPinExpiredError("PIN expired or consumed")
-            
+
             response.raise_for_status()
             pin_data = response.json()
-            
+
             if pin_data.get('authToken'):
                 user_data = validate_plex_token(pin_data['authToken'])
-                
+
                 encrypted_token = encrypt_token(pin_data['authToken'])
-                
+
                 user_id = user_data.get('id')
                 user_id_str = str(user_id) if user_id is not None else ''
-                
+
                 settings.plex.apikey = ""
                 settings.plex.ip = "127.0.0.1"
                 settings.plex.port = 32400
                 settings.plex.ssl = False
-                
+
                 settings.plex.token = encrypted_token
                 settings.plex.username = user_data.get('username') or ''
                 settings.plex.email = user_data.get('email') or ''
                 settings.plex.user_id = user_id_str
                 settings.plex.auth_method = 'oauth'
                 settings.general.use_plex = True
-                
+
                 try:
                     write_config()
                     pin_cache.delete(pin_id)
-                    
-                    current_app.logger.info(f"OAuth authentication successful for user: {sanitize_log_data(user_data.get('username', ''))}")
-                    
+
+                    logging.info(
+                        f"OAuth authentication successful for user: {sanitize_log_data(user_data.get('username', ''))}")
+
                     return {
                         'data': {
                             'authenticated': True,
@@ -281,26 +295,27 @@ class PlexPinCheck(Resource):
                         }
                     }
                 except Exception as config_error:
-                    current_app.logger.error(f"Failed to save OAuth settings: {config_error}")
-                    
+                    logging.error(f"Failed to save OAuth settings: {config_error}")
+
                     settings.plex.token = ""
                     settings.plex.username = ""
                     settings.plex.email = ""
                     settings.plex.user_id = ""
                     settings.plex.auth_method = 'apikey'
-                    
+
                     raise PlexConnectionError("Failed to save authentication settings")
-            
+
             return {
                 'data': {
                     'authenticated': False,
                     'code': pin_data.get('code')
                 }
             }
-            
+
         except requests.exceptions.RequestException as e:
-            current_app.logger.error(f"Failed to check PIN: {type(e).__name__}")
+            logging.error(f"Failed to check PIN: {type(e).__name__}")
             raise PlexConnectionError(f"Failed to check PIN: {str(e)}")
+
 
 @api_ns_plex.route('plex/oauth/validate')
 class PlexValidate(Resource):
@@ -308,7 +323,7 @@ class PlexValidate(Resource):
         try:
             auth_method = settings.plex.get('auth_method', 'apikey')
             decrypted_token = get_decrypted_token()
-            
+
             if not decrypted_token:
                 return {
                     'data': {
@@ -316,9 +331,9 @@ class PlexValidate(Resource):
                         'auth_method': auth_method
                     }
                 }, 200
-            
+
             user_data = validate_plex_token(decrypted_token)
-            
+
             return {
                 'data': {
                     'valid': True,
@@ -336,6 +351,7 @@ class PlexValidate(Resource):
                 }
             }, 200
 
+
 @api_ns_plex.route('plex/oauth/servers')
 class PlexServers(Resource):
     def get(self):
@@ -343,28 +359,28 @@ class PlexServers(Resource):
             decrypted_token = get_decrypted_token()
             if not decrypted_token:
                 return {'data': []}
-            
+
             headers = {
                 'X-Plex-Token': decrypted_token,
                 'Accept': 'application/json'
             }
-            
+
             response = requests.get(
                 'https://plex.tv/pms/resources',
                 headers=headers,
                 params={'includeHttps': '1', 'includeRelay': '1'},
                 timeout=10
             )
-            
+
             if response.status_code in (401, 403):
-                current_app.logger.warning(f"Plex authentication failed: {response.status_code}")
+                logging.warning(f"Plex authentication failed: {response.status_code}")
                 return {'data': []}
             elif response.status_code != 200:
-                current_app.logger.error(f"Plex API error: {response.status_code}")
+                logging.error(f"Plex API error: {response.status_code}")
                 raise PlexConnectionError(f"Failed to get servers: HTTP {response.status_code}")
-            
+
             response.raise_for_status()
-            
+
             content_type = response.headers.get('content-type', '')
             if 'application/json' in content_type:
                 resources_data = response.json()
@@ -381,7 +397,7 @@ class PlexServers(Resource):
                             'port': int(conn.get('port', 0)),
                             'local': conn.get('local') == '1'
                         })
-                    
+
                     if device.get('provides') == 'server' and device.get('owned') == '1':
                         resources_data.append({
                             'name': device.get('name'),
@@ -395,12 +411,13 @@ class PlexServers(Resource):
                         })
             else:
                 raise PlexConnectionError(f"Unexpected response format: {content_type}")
-            
+
             servers = []
             for device in resources_data:
                 if isinstance(device, dict) and device.get('provides') == 'server' and device.get('owned'):
                     # Collect all connections for parallel testing
                     connection_candidates = []
+                    connections = []
                     for conn in device.get('connections', []):
                         connection_data = {
                             'uri': conn['uri'],
@@ -410,10 +427,9 @@ class PlexServers(Resource):
                             'local': conn.get('local', False)
                         }
                         connection_candidates.append(connection_data)
-                    
+
                     # Test all connections in parallel using threads
                     if connection_candidates:
-                        connections = []
                         def test_connection_wrapper(conn_data):
                             available, latency = test_plex_connection(conn_data['uri'], decrypted_token)
                             if available:
@@ -421,27 +437,27 @@ class PlexServers(Resource):
                                 conn_data['latency'] = latency
                                 return conn_data
                             return None
-                        
+
                         # Test connections in parallel with max 5 threads
                         with ThreadPoolExecutor(max_workers=min(5, len(connection_candidates))) as executor:
                             future_to_conn = {
-                                executor.submit(test_connection_wrapper, conn): conn 
+                                executor.submit(test_connection_wrapper, conn): conn
                                 for conn in connection_candidates
                             }
-                            
+
                             for future in as_completed(future_to_conn, timeout=10):
                                 try:
                                     result = future.result()
                                     if result:
                                         connections.append(result)
                                 except Exception as e:
-                                    current_app.logger.debug(f"Connection test failed: {e}")
-                    
+                                    logging.debug(f"Connection test failed: {e}")
+
                     if connections:
                         # Sort connections by latency to find the best one
                         connections.sort(key=lambda x: x.get('latency', float('inf')))
                         bestConnection = connections[0] if connections else None
-                        
+
                         servers.append({
                             'name': device['name'],
                             'machineIdentifier': device['clientIdentifier'],
@@ -451,15 +467,16 @@ class PlexServers(Resource):
                             'platform': device.get('platform'),
                             'device': device.get('device')
                         })
-            
+
             return {'data': servers}
-            
+
         except requests.exceptions.RequestException as e:
-            current_app.logger.warning(f"Failed to connect to Plex: {type(e).__name__}: {str(e)}")
+            logging.warning(f"Failed to connect to Plex: {type(e).__name__}: {str(e)}")
             return {'data': []}
         except Exception as e:
-            current_app.logger.warning(f"Unexpected error getting Plex servers: {type(e).__name__}: {str(e)}")
+            logging.warning(f"Unexpected error getting Plex servers: {type(e).__name__}: {str(e)}")
             return {'data': []}
+
 
 @api_ns_plex.route('plex/oauth/logout')
 class PlexLogout(Resource):
@@ -478,22 +495,20 @@ class PlexLogout(Resource):
             settings.plex.email = ""
             settings.plex.user_id = ""
             settings.plex.auth_method = 'apikey'
-            
             settings.plex.server_machine_id = ""
             settings.plex.server_name = ""
             settings.plex.server_url = ""
             settings.plex.server_local = False
-            
             settings.plex.encryption_key = ""
-            
             settings.general.use_plex = False
-            
+
             write_config()
 
             return {'success': True}
         except Exception as e:
-            current_app.logger.error(f"Logout failed: {e}")
+            logging.error(f"Logout failed: {e}")
             return {'error': 'Failed to logout'}, 500
+
 
 @api_ns_plex.route('plex/encrypt-apikey')
 class PlexEncryptApiKey(Resource):
@@ -506,10 +521,11 @@ class PlexEncryptApiKey(Resource):
                 return {'success': True, 'message': 'API key encrypted successfully'}
             else:
                 return {'success': False, 'message': 'No plain text API key found or already encrypted'}
-                
+
         except Exception as e:
-            current_app.logger.error(f"API key encryption failed: {e}")
+            logging.error(f"API key encryption failed: {e}")
             return {'error': 'Failed to encrypt API key'}, 500
+
 
 @api_ns_plex.route('plex/apikey')
 class PlexApiKey(Resource):
@@ -521,24 +537,25 @@ class PlexApiKey(Resource):
         try:
             args = self.post_request_parser.parse_args()
             apikey = args.get('apikey', '').strip()
-            
+
             if not apikey:
                 return {'error': 'API key is required'}, 400
-            
+
             encrypted_apikey = encrypt_token(apikey)
-            
-            settings.plex.apikey = encrypted_apikey  
+
+            settings.plex.apikey = encrypted_apikey
             settings.plex.apikey_encrypted = True
             settings.plex.auth_method = 'apikey'
-            
+
             write_config()
-            
-            current_app.logger.info("API key saved and encrypted")
+
+            logging.info("API key saved and encrypted")
             return {'success': True, 'message': 'API key saved securely'}
-            
+
         except Exception as e:
-            current_app.logger.error(f"Failed to save API key: {e}")
+            logging.error(f"Failed to save API key: {e}")
             return {'error': 'Failed to save API key'}, 500
+
 
 @api_ns_plex.route('plex/test-connection')
 class PlexTestConnection(Resource):
@@ -549,30 +566,30 @@ class PlexTestConnection(Resource):
     def post(self):
         args = self.post_request_parser.parse_args()
         uri = args.get('uri')
-        
+
         decrypted_token = get_decrypted_token()
         if not decrypted_token:
             raise UnauthorizedError()
-        
+
         try:
             headers = {
                 'X-Plex-Token': decrypted_token,
                 'Accept': 'application/json',
                 'X-Plex-Client-Identifier': generate_client_id()
             }
-            
+
             response = requests.get(
                 f"{uri}/identity",
                 headers=headers,
                 timeout=3,
                 verify=False
             )
-            
+
             if response.status_code == 200:
                 return {'success': True}
             else:
                 return {'success': False}
-                
+
         except requests.exceptions.Timeout:
             return {'success': False, 'error': 'Connection timeout'}
         except Exception as e:
@@ -580,6 +597,7 @@ class PlexTestConnection(Resource):
 
     def get(self):
         abort(405, "Method not allowed. Use POST.")
+
 
 @api_ns_plex.route('plex/select-server')
 class PlexSelectServer(Resource):
@@ -591,15 +609,15 @@ class PlexSelectServer(Resource):
                 'url': settings.plex.get('server_url'),
                 'local': settings.plex.get('server_local', False)
             }
-            
+
             if server_info['machineIdentifier']:
                 return {'data': server_info}
             else:
                 return {'data': None}
-                
+
         except Exception as e:
             return {'data': None}
-    
+
     post_request_parser = reqparse.RequestParser()
     post_request_parser.add_argument('machineIdentifier', type=str, required=True, help='Machine identifier')
     post_request_parser.add_argument('name', type=str, required=True, help='Server name')
@@ -613,13 +631,13 @@ class PlexSelectServer(Resource):
         name = args.get('name')
         connection_uri = args.get('uri')
         connection_local = args.get('local', 'false').lower() == 'true'
-        
+
         settings.plex.server_machine_id = machine_identifier
         settings.plex.server_name = name
         settings.plex.server_url = connection_uri
         settings.plex.server_local = connection_local
         write_config()
-        
+
         return {
             'data': {
                 'success': True,
