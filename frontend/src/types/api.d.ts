@@ -306,6 +306,35 @@ declare namespace Plex {
     device: string;
     bestConnection?: ServerConnection | null;
   }
+
+  interface Library {
+    key: string;
+    title: string;
+    type: string;
+    count: number;
+    agent: string;
+    scanner: string;
+    language: string;
+    uuid: string;
+    updatedAt: number;
+    createdAt: number;
+  }
+
+  interface WebhookResult {
+    success: boolean;
+    message: string;
+    webhook_url?: string;
+    total_webhooks?: number;
+  }
+
+  interface WebhookInfo {
+    url: string;
+  }
+
+  interface WebhookList {
+    webhooks: WebhookInfo[];
+    count: number;
+  }
 }
 
 interface SearchResultType {

@@ -487,6 +487,128 @@ class PlexServers(Resource):
             return {'data': []}
 
 
+@api_ns_plex.route('plex/oauth/libraries')
+class PlexLibraries(Resource):
+    def get(self):
+        try:
+            decrypted_token = get_decrypted_token()
+            if not decrypted_token:
+                logging.warning("No decrypted token available for Plex library fetching")
+                return {'data': []}
+
+            # Get the selected server URL
+            server_url = settings.plex.get('server_url')
+            if not server_url:
+                logging.warning("No Plex server selected")
+                return {'data': []}
+
+            logging.info(f"Fetching Plex libraries from server: {server_url}")
+            
+            headers = {
+                'X-Plex-Token': decrypted_token,
+                'Accept': 'application/json'
+            }
+
+            # Get libraries from the selected server
+            response = requests.get(
+                f"{server_url}/library/sections",
+                headers=headers,
+                timeout=10,
+                verify=False
+            )
+
+            if response.status_code in (401, 403):
+                logging.warning(f"Plex authentication failed: {response.status_code}")
+                return {'data': []}
+            elif response.status_code != 200:
+                logging.error(f"Plex API error: {response.status_code}")
+                raise PlexConnectionError(f"Failed to get libraries: HTTP {response.status_code}")
+
+            response.raise_for_status()
+            
+            # Parse the response - it could be JSON or XML depending on the server
+            content_type = response.headers.get('content-type', '')
+            logging.debug(f"Plex libraries response content-type: {content_type}")
+            
+            if 'application/json' in content_type:
+                data = response.json()
+                logging.debug(f"Plex libraries JSON response: {data}")
+                if 'MediaContainer' in data and 'Directory' in data['MediaContainer']:
+                    sections = data['MediaContainer']['Directory']
+                else:
+                    sections = []
+            elif 'application/xml' in content_type or 'text/xml' in content_type:
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(response.text)
+                sections = []
+                for directory in root.findall('Directory'):
+                    sections.append({
+                        'key': directory.get('key'),
+                        'title': directory.get('title'),
+                        'type': directory.get('type'),
+                        'count': int(directory.get('count', 0)),
+                        'agent': directory.get('agent', ''),
+                        'scanner': directory.get('scanner', ''),
+                        'language': directory.get('language', ''),
+                        'uuid': directory.get('uuid', ''),
+                        'updatedAt': int(directory.get('updatedAt', 0)),
+                        'createdAt': int(directory.get('createdAt', 0))
+                    })
+            else:
+                raise PlexConnectionError(f"Unexpected response format: {content_type}")
+
+            # Filter and format libraries for movie and show types only
+            libraries = []
+            for section in sections:
+                if isinstance(section, dict) and section.get('type') in ['movie', 'show']:
+                    # Get the actual count of items in this library section
+                    try:
+                        section_key = section.get('key')
+                        count_response = requests.get(
+                            f"{server_url}/library/sections/{section_key}/all",
+                            headers={'X-Plex-Token': decrypted_token, 'Accept': 'application/json'},
+                            timeout=5,
+                            verify=False
+                        )
+                        
+                        actual_count = 0
+                        if count_response.status_code == 200:
+                            count_data = count_response.json()
+                            if 'MediaContainer' in count_data:
+                                container = count_data['MediaContainer']
+                                # The 'size' field contains the number of items in the library
+                                actual_count = int(container.get('size', len(container.get('Metadata', []))))
+                        
+                        logging.info(f"Library '{section.get('title')}' has {actual_count} items")
+                        
+                    except Exception as e:
+                        logging.warning(f"Failed to get count for library {section.get('title')}: {e}")
+                        actual_count = 0
+
+                    libraries.append({
+                        'key': str(section.get('key', '')),
+                        'title': section.get('title', ''),
+                        'type': section.get('type', ''),
+                        'count': actual_count,
+                        'agent': section.get('agent', ''),
+                        'scanner': section.get('scanner', ''),
+                        'language': section.get('language', ''),
+                        'uuid': section.get('uuid', ''),
+                        'updatedAt': int(section.get('updatedAt', 0)),
+                        'createdAt': int(section.get('createdAt', 0))
+                    })
+
+            logging.debug(f"Filtered Plex libraries: {libraries}")
+            return {'data': libraries}
+
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"Failed to connect to Plex server: {type(e).__name__}: {str(e)}")
+            return {'data': []}
+        except Exception as e:
+            logging.warning(f"Unexpected error getting Plex libraries: {type(e).__name__}: {str(e)}")
+            return {'data': []}
+
+
 @api_ns_plex.route('plex/oauth/logout')
 class PlexLogout(Resource):
     post_request_parser = reqparse.RequestParser()
@@ -661,3 +783,172 @@ class PlexSelectServer(Resource):
                 }
             }
         }
+
+
+@api_ns_plex.route('plex/webhook/create')
+class PlexWebhookCreate(Resource):
+    post_request_parser = reqparse.RequestParser()
+
+    @api_ns_plex.doc(parser=post_request_parser)
+    def post(self):
+        try:
+            decrypted_token = get_decrypted_token()
+            if not decrypted_token:
+                raise UnauthorizedError()
+
+            # Import MyPlexAccount here to avoid circular imports
+            from plexapi.myplex import MyPlexAccount
+            
+            # Create account instance with OAuth token
+            account = MyPlexAccount(token=decrypted_token)
+            
+            # Build webhook URL for this Bazarr instance
+            # Try to get base URL from settings first, then fall back to request host
+            configured_base_url = getattr(settings.general, 'base_url', '').rstrip('/')
+            
+            # Get the API key for webhook authentication
+            apikey = getattr(settings.auth, 'apikey', '')
+            if not apikey:
+                logging.error("No API key configured - cannot create webhook")
+                return {'error': 'No API key configured. Set up API key in Settings > General first.'}, 400
+            
+            if configured_base_url:
+                webhook_url = f"{configured_base_url}/api/webhooks/plex?apikey={apikey}"
+                logging.info(f"Using configured base URL for webhook: {configured_base_url}/api/webhooks/plex")
+            else:
+                # Fall back to using the current request's host
+                scheme = 'https' if request.is_secure else 'http'
+                host = request.host
+                webhook_url = f"{scheme}://{host}/api/webhooks/plex?apikey={apikey}"
+                logging.info(f"Using request host for webhook (no base URL configured): {scheme}://{host}/api/webhooks/plex")
+                logging.info("Note: If Bazarr is behind a reverse proxy, configure Base URL in General Settings for better reliability")
+            
+            # Get existing webhooks
+            existing_webhooks = account.webhooks()
+            existing_urls = []
+            
+            for webhook in existing_webhooks:
+                try:
+                    if hasattr(webhook, 'url'):
+                        existing_urls.append(webhook.url)
+                    elif isinstance(webhook, str):
+                        existing_urls.append(webhook)
+                    elif isinstance(webhook, dict) and 'url' in webhook:
+                        existing_urls.append(webhook['url'])
+                except Exception as e:
+                    logging.warning(f"Failed to process existing webhook {webhook}: {e}")
+                    continue
+            
+            if webhook_url in existing_urls:
+                return {
+                    'data': {
+                        'success': True,
+                        'message': 'Webhook already exists',
+                        'webhook_url': webhook_url
+                    }
+                }
+            
+            # Add the webhook
+            updated_webhooks = account.addWebhook(webhook_url)
+            
+            logging.info(f"Successfully created Plex webhook: {webhook_url}")
+            
+            return {
+                'data': {
+                    'success': True,
+                    'message': 'Webhook created successfully',
+                    'webhook_url': webhook_url,
+                    'total_webhooks': len(updated_webhooks)
+                }
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to create Plex webhook: {e}")
+            return {'error': f'Failed to create webhook: {str(e)}'}, 500
+
+
+@api_ns_plex.route('plex/webhook/list')
+class PlexWebhookList(Resource):
+    def get(self):
+        try:
+            decrypted_token = get_decrypted_token()
+            if not decrypted_token:
+                raise UnauthorizedError()
+
+            from plexapi.myplex import MyPlexAccount
+            account = MyPlexAccount(token=decrypted_token)
+            
+            webhooks = account.webhooks()
+            webhook_list = []
+            
+            for webhook in webhooks:
+                try:
+                    # Handle different webhook object types
+                    if hasattr(webhook, 'url'):
+                        webhook_url = webhook.url
+                    elif isinstance(webhook, str):
+                        webhook_url = webhook
+                    elif isinstance(webhook, dict) and 'url' in webhook:
+                        webhook_url = webhook['url']
+                    else:
+                        logging.warning(f"Unknown webhook type: {type(webhook)}, value: {webhook}")
+                        continue
+                    
+                    webhook_list.append({'url': webhook_url})
+                except Exception as e:
+                    logging.warning(f"Failed to process webhook {webhook}: {e}")
+                    continue
+            
+            return {
+                'data': {
+                    'webhooks': webhook_list,
+                    'count': len(webhook_list)
+                }
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to list Plex webhooks: {e}")
+            return {'error': f'Failed to list webhooks: {str(e)}'}, 500
+
+
+@api_ns_plex.route('plex/webhook/delete')
+class PlexWebhookDelete(Resource):
+    post_request_parser = reqparse.RequestParser()
+    post_request_parser.add_argument('webhook_url', type=str, required=True, help='Webhook URL to delete')
+
+    @api_ns_plex.doc(parser=post_request_parser)
+    def post(self):
+        try:
+            args = self.post_request_parser.parse_args()
+            webhook_url = args.get('webhook_url')
+            
+            logging.info(f"Attempting to delete Plex webhook: {webhook_url}")
+            
+            decrypted_token = get_decrypted_token()
+            if not decrypted_token:
+                raise UnauthorizedError()
+
+            from plexapi.myplex import MyPlexAccount
+            account = MyPlexAccount(token=decrypted_token)
+            
+            # First, let's see what webhooks actually exist
+            existing_webhooks = account.webhooks()
+            logging.info(f"Existing webhooks before deletion: {[str(w) for w in existing_webhooks]}")
+            
+            # Delete the webhook
+            account.deleteWebhook(webhook_url)
+            
+            logging.info(f"Successfully deleted Plex webhook: {webhook_url}")
+            
+            return {
+                'data': {
+                    'success': True,
+                    'message': 'Webhook deleted successfully'
+                }
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to delete Plex webhook: {e}")
+            return {'error': f'Failed to delete webhook: {str(e)}'}, 500
+
+
