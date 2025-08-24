@@ -248,7 +248,7 @@ validators = [
     Validator('plex.token', must_exist=True, default='', is_type_of=str),
     Validator('plex.username', must_exist=True, default='', is_type_of=str),
     Validator('plex.email', must_exist=True, default='', is_type_of=str),
-    Validator('plex.user_id', must_exist=True, default='', is_type_of=str),
+    Validator('plex.user_id', must_exist=True, default='', is_type_of=(int, str)),
     Validator('plex.auth_method', must_exist=True, default='apikey', is_type_of=str, is_in=['apikey', 'oauth']),
     Validator('plex.encryption_key', must_exist=True, default='', is_type_of=str),
     Validator('plex.server_machine_id', must_exist=True, default='', is_type_of=str),
