@@ -89,11 +89,6 @@ export const ProviderList: Readonly<ProviderInfo[]> = [
     message: "Requires AniDB Integration.",
   },
   {
-    key: "argenteam_dump",
-    name: "Argenteam Dump",
-    description: "Subtitles dump of the now extinct Argenteam",
-  },
-  {
     key: "avistaz",
     name: "AvistaZ",
     description:
