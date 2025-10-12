@@ -187,3 +187,22 @@ export const usePlexWebhookDeleteMutation = () => {
     },
   });
 };
+
+export const usePlexAutopulseConfigQuery = <TData = Plex.AutopulseConfig>(
+  options?: Partial<
+    UseQueryOptions<Plex.AutopulseConfig, Error, TData, (string | boolean)[]>
+  > & { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+
+  return useQuery({
+    queryKey: [QueryKeys.Plex, "autopulse", "config"],
+    queryFn: () => api.plex.getAutopulseConfig(),
+    enabled,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
+    throwOnError: false,
+    retry: 1,
+    ...options,
+  });
+};

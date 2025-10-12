@@ -102,6 +102,11 @@ validators = [
     Validator('general.postprocessing_threshold_movie', must_exist=True, default=70, is_type_of=int, gte=0,
               lte=100),
     Validator('general.use_postprocessing_threshold_movie', must_exist=True, default=False, is_type_of=bool),
+    # External webhook integration
+    Validator('general.use_external_webhook', must_exist=True, default=False, is_type_of=bool),
+    Validator('general.external_webhook_url', must_exist=True, default='', is_type_of=str),
+    Validator('general.external_webhook_username', must_exist=True, default='', is_type_of=str),
+    Validator('general.external_webhook_password', must_exist=True, default='', is_type_of=str),
     Validator('general.use_sonarr', must_exist=True, default=False, is_type_of=bool),
     Validator('general.use_radarr', must_exist=True, default=False, is_type_of=bool),
     Validator('general.use_plex', must_exist=True, default=False, is_type_of=bool),
@@ -1058,7 +1063,7 @@ def migrate_apikey_to_oauth():
         time.sleep(delay)
         
         # Decrypt the API key
-        from bazarr.api.plex.security import TokenManager, get_or_create_encryption_key
+        from api.plex.security import TokenManager, get_or_create_encryption_key
         encryption_key = get_or_create_encryption_key(settings.plex, 'encryption_key')
         token_manager = TokenManager(encryption_key)
         
@@ -1270,7 +1275,7 @@ def migrate_apikey_to_oauth():
             settings.plex.server_local = oauth_config['server_local']
             
             # Test connection
-            from bazarr.plex.operations import get_plex_server
+            from plex.operations import get_plex_server
             test_server = get_plex_server()
             test_server.account()  # Test connection
             test_success = True
