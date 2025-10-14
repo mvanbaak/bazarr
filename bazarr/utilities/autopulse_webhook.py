@@ -89,12 +89,18 @@ def _get_autopulse_template():
             template_data = response.json()
             logging.debug("BAZARR received Autopulse configuration template")
             return template_data
+        elif response.status_code == 401:
+            logging.warning(f"BAZARR Autopulse template API authentication failed (401). Check your credentials. Did you forget to save your settings?")
+            return None
+        elif response.status_code == 400:
+            logging.warning(f"BAZARR Autopulse template API bad request (400). Check your webhook URL and credentials. Did you forget to save your settings?")
+            return None
         else:
             logging.warning(f"BAZARR Autopulse template API failed with status {response.status_code}")
             return None
             
     except requests.exceptions.RequestException as e:
-        logging.debug(f"BAZARR Autopulse template API request failed: {str(e)}")
+        logging.debug(f"BAZARR Autopulse template API request failed: {str(e)}. Did you forget to save your external webhook settings?")
         return None
     except Exception as e:
         logging.error(f"BAZARR unexpected error calling Autopulse template API: {str(e)}")
@@ -226,11 +232,15 @@ def call_external_webhook(subtitle_path, media_path, language, media_type):
         
         if response.status_code == 200:
             logging.info(f"BAZARR external webhook successful for {parent_dir}")
+        elif response.status_code == 401:
+            logging.warning(f"BAZARR external webhook authentication failed (401) for {parent_dir}. Did you forget to save your external webhook settings?")
+        elif response.status_code == 400:
+            logging.warning(f"BAZARR external webhook bad request (400) for {parent_dir}. Check your webhook URL and credentials. Did you forget to save your external webhook settings?")
         else:
             logging.warning(f"BAZARR external webhook failed with status {response.status_code} for {parent_dir}")
             
     except requests.exceptions.RequestException as e:
-        logging.error(f"BAZARR external webhook failed for {media_path}: {str(e)}")
+        logging.error(f"BAZARR external webhook failed for {media_path}: {str(e)}. Did you forget to save your external webhook settings?")
     except Exception as e:
         logging.error(f"BAZARR unexpected error calling external webhook for {media_path}: {str(e)}")
 
@@ -274,7 +284,7 @@ def test_external_webhook_connection():
         
         if not webhook_url:
             logging.debug("BAZARR webhook test - No URL configured")
-            return False, "External webhook not configured"
+            return False, "External webhook not configured. Please enter a webhook URL and save your settings."
 
         # Test with stats endpoint if it looks like Autopulse, otherwise test the main URL
         test_url = webhook_url
@@ -297,9 +307,23 @@ def test_external_webhook_connection():
         
         if response.status_code == 200:
             return True, "External webhook connection successful"
+        elif response.status_code == 401:
+            return False, "External webhook authentication failed (401). Check your username and password."
+        elif response.status_code == 400:
+            return False, "External webhook bad request (400). Check your webhook URL and credentials."
         else:
-            return False, f"External webhook connection failed with status {response.status_code}"
+            return False, f"External webhook connection failed with status {response.status_code}. Check your webhook configuration."
             
+    except requests.exceptions.ConnectionError as e:
+        error_msg = str(e)
+        if 'Connection refused' in error_msg:
+            return False, "External webhook connection refused. If using 'localhost', try using the Docker container name instead."
+        elif 'Name or service not known' in error_msg or 'nodename nor servname provided' in error_msg or 'Name does not resolve' in error_msg or 'NameResolutionError' in error_msg:
+            return False, "External webhook hostname not found. Check your webhook URL for typos or incorrect container name."
+        else:
+            return False, f"External webhook connection error: {error_msg}"
+    except requests.exceptions.Timeout:
+        return False, "External webhook connection timed out. Check if the service is running and accessible."
     except requests.exceptions.RequestException as e:
         return False, f"External webhook connection failed: {str(e)}"
     except Exception as e:

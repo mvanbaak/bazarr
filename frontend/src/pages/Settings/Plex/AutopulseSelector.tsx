@@ -11,9 +11,8 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import { useClipboard } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   usePlexAuthValidationQuery,
@@ -30,7 +29,6 @@ const AutopulseSelector: FunctionComponent<AutopulseSelectorProps> = (
   props,
 ) => {
   const { label, description } = props;
-  const clipboard = useClipboard();
 
   // Check if user is authenticated with OAuth
   const { data: authData } = usePlexAuthValidationQuery();
@@ -44,21 +42,34 @@ const AutopulseSelector: FunctionComponent<AutopulseSelectorProps> = (
     isFetching: isFetchingConfig,
   } = usePlexAutopulseConfigQuery({
     enabled: false,
+    retry: false,
   });
 
   const handleGenerateAutopulseConfig = async () => {
-    try {
-      await refetchConfig();
+    const result = await refetchConfig();
+
+    if (result.isSuccess && result.data) {
       notifications.show({
+        id: "autopulse-config",
         title: "Success",
         message: "Autopulse configuration generated successfully",
         color: "green",
       });
-    } catch (error) {
+    } else if (result.isError) {
+      const status = (result.error as { response?: { status?: number } })
+        ?.response?.status;
+
+      const errorMessage =
+        status === 401
+          ? "Plex OAuth authentication required. Please configure OAuth authentication above."
+          : status === 400
+            ? "Unable to generate configuration. Please ensure the external webhook is configured and saved in Settings."
+            : "Failed to generate Autopulse configuration. Please ensure Autopulse is running and supports the template API.";
+
       notifications.show({
+        id: "autopulse-config",
         title: "Error",
-        message:
-          "Failed to generate Autopulse configuration. Please ensure Autopulse is running and supports the template API.",
+        message: errorMessage,
         color: "red",
       });
     }
@@ -124,19 +135,36 @@ const AutopulseSelector: FunctionComponent<AutopulseSelectorProps> = (
               <ActionIcon
                 variant="subtle"
                 size="sm"
-                onClick={() => {
-                  clipboard.copy(configData.config_yaml);
-                  notifications.show({
-                    title: "Copied!",
-                    message: "Autopulse configuration copied to clipboard",
-                    color: "green",
-                  });
+                onClick={async () => {
+                  const yamlContent = configData?.config_yaml;
+
+                  if (!yamlContent) {
+                    notifications.show({
+                      title: "Error",
+                      message: "No configuration to copy",
+                      color: "red",
+                    });
+                    return;
+                  }
+
+                  try {
+                    await navigator.clipboard.writeText(yamlContent);
+                    notifications.show({
+                      title: "Copied!",
+                      message: "Autopulse configuration copied to clipboard",
+                      color: "green",
+                    });
+                  } catch (error) {
+                    notifications.show({
+                      title: "Copy Failed",
+                      message:
+                        "Failed to copy to clipboard. Please copy manually from the code block below.",
+                      color: "red",
+                    });
+                  }
                 }}
               >
-                <FontAwesomeIcon
-                  icon={clipboard.copied ? faCheck : faCopy}
-                  color={clipboard.copied ? "green" : undefined}
-                />
+                <FontAwesomeIcon icon={faCopy} />
               </ActionIcon>
             </Tooltip>
           </Group>
