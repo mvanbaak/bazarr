@@ -471,6 +471,15 @@ export const ProviderList: Readonly<ProviderInfo[]> = [
   {
     key: "subsource",
     name: "subsource.net",
+    message:
+      "API key is  required. You can create your own API key on your Subsource profile page.",
+    inputs: [
+      {
+        type: "password",
+        key: "apikey",
+        name: "API key",
+      },
+    ],
   },
   {
     key: "subssabbz",

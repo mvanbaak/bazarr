@@ -462,6 +462,9 @@ validators = [
     # anidb section
     Validator('anidb.api_client', must_exist=True, default='', is_type_of=str),
     Validator('anidb.api_client_ver', must_exist=True, default=1, is_type_of=int),
+
+    # subsource section
+    Validator('subsource.apikey', must_exist=True, default='', is_type_of=str),
 ]
 
 
@@ -794,6 +797,10 @@ def save_settings(settings_items):
             if key != settings.titlovi.password:
                 reset_providers = True
                 region.delete('titlovi_token')
+
+        if key == 'settings-subsource-apikey':
+            if key != settings.subsource.apikey:
+                reset_providers = True
 
         if reset_providers:
             from .get_providers import reset_throttled_providers

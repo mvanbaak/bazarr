@@ -17,7 +17,7 @@ from guessit import guessit
 from subzero.language import Language
 from subliminal import Episode, Movie
 from subliminal.cache import region
-from subliminal.exceptions import AuthenticationError
+from subliminal.exceptions import AuthenticationError, ConfigurationError
 from subliminal_patch.exceptions import APIThrottled, ForbiddenError, TooManyRequests
 from .mixins import ProviderRetryMixin
 from subliminal_patch.subtitle import Subtitle
@@ -115,6 +115,9 @@ class SubsourceProvider(ProviderRetryMixin, Provider, ProviderSubtitleArchiveMix
     video_types = (Episode, Movie)
 
     def __init__(self, api_key=None):
+        if not api_key:
+            raise ConfigurationError('Api_key must be specified')
+
         self.session = Session()
         self.session.headers = {'User-Agent': os.environ.get("SZ_USER_AGENT", "Sub-Zero/2")}
         self.api_key = api_key
