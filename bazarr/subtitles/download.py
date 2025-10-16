@@ -43,7 +43,7 @@ def generate_subtitles(path, languages, audio_language, sceneName, title, media_
     language_set = _get_language_obj(languages=languages)
     profile = get_profiles_list(profile_id=profile_id)
     original_format = profile['originalFormat']
-    hi_required = "force HI" if any([x.hi for x in language_set]) else False
+    hi_required = "force HI" if all([x.hi for x in language_set]) else "don't prefer"
     also_forced = any([x.forced for x in language_set])
     forced_required = all([x.forced for x in language_set])
     _set_forced_providers(pool=pool, also_forced=also_forced, forced_required=forced_required)
@@ -142,10 +142,6 @@ def _get_language_obj(languages):
 
     for language in languages:
         lang, hi_item, forced_item = language
-        if hi_item == "True":
-            hi = "force HI"
-        else:
-            hi = "force non-HI"
 
         # Always use alpha2 in API Request
         lang = alpha3_from_alpha2(lang)
@@ -154,7 +150,7 @@ def _get_language_obj(languages):
 
         if forced_item == "True":
             lang_obj = Language.rebuild(lang_obj, forced=True)
-        if hi == "force HI":
+        if hi_item == "True":
             lang_obj = Language.rebuild(lang_obj, hi=True)
 
         language_set.add(lang_obj)
