@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class SubsourceConverter(LanguageReverseConverter):
     def __init__(self):
         self.from_subsource = {'English': ('eng',),
-                               'Farsi/Persian': ('fas',),
+                               'Farsi_persian': ('fas',),
                                'Abkhazian': ('abk',),
                                'Afrikaans': ('afr',),
                                'Albanian': ('sqi',),
@@ -136,8 +136,10 @@ class SubsourceConverter(LanguageReverseConverter):
         raise ConfigurationError('Unsupported language code for subsource: %s, %s, %s' % (alpha3, country, script))
 
     def reverse(self, subsource):
+        if subsource == 'Farsi_persian':
+            return ('per',)
+
         if subsource in self.from_subsource:
             return self.from_subsource[subsource]
 
-        raise ConfigurationError('Unsupported language number for subsource: %s' % subsource)
-
+        raise ConfigurationError('Unsupported language name for subsource: %s' % subsource)
