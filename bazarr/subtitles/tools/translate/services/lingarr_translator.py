@@ -2,13 +2,10 @@
 
 import logging
 import pysubs2
-import srt
 import requests
 
 from retry.api import retry
-from subliminal_patch.core import get_subtitle_path
-from subzero.language import Language
-from deep_translator.exceptions import TooManyRequests, RequestError, TranslationNotFound
+from deep_translator.exceptions import TooManyRequests, RequestError
 
 from app.config import settings
 from app.database import TableShows, TableEpisodes, TableMovies, database, select
@@ -24,8 +21,8 @@ from ..core.translator_utils import add_translator_info, create_process_result, 
 
 logger = logging.getLogger(__name__)
 
-class LingarrTranslatorService:
 
+class LingarrTranslatorService:
     def __init__(self, source_srt_file, dest_srt_file, lang_obj, to_lang, from_lang, media_type,
                  video_path, orig_to_lang, forced, hi, sonarr_series_id, sonarr_episode_id,
                  radarr_id):
@@ -43,7 +40,6 @@ class LingarrTranslatorService:
         self.sonarr_episode_id = sonarr_episode_id
         self.radarr_id = radarr_id
         self.language_code_convert_dict = {
-            'he': 'iw',
             'zh': 'zh-CN',
             'zt': 'zh-TW',
         }
@@ -105,7 +101,8 @@ class LingarrTranslatorService:
             hide_progress(id=f'translate_progress_{self.dest_srt_file}')
             return False
 
-    @retry(exceptions=(TooManyRequests, RequestError, requests.exceptions.RequestException), tries=3, delay=1, backoff=2, jitter=(0, 1))
+    @retry(exceptions=(TooManyRequests, RequestError, requests.exceptions.RequestException), tries=3, delay=1,
+           backoff=2, jitter=(0, 1))
     def _translate_content(self, lines_list):
         try:
             source_lang = self.language_code_convert_dict.get(self.from_lang, self.from_lang)
