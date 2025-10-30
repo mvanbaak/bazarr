@@ -50,8 +50,10 @@ def parse_announcement_dict(announcement_dict):
 
 def get_announcements_to_file():
     try:
-        r = requests.get("https://raw.githubusercontent.com/morpheus65535/bazarr-binaries/master/announcements.json",
-                         timeout=10)
+        r = requests.get(
+            url="https://cdn.statically.io/gh/morpheus65535/bazarr-binaries/refs/heads/master/announcements.json",
+            timeout=30
+        )
     except requests.exceptions.HTTPError:
         logging.exception("Error trying to get announcements from Github. Http error.")
     except requests.exceptions.ConnectionError:
