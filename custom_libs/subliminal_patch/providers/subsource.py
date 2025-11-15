@@ -344,12 +344,12 @@ class SubsourceProvider(ProviderRetryMixin, Provider, ProviderSubtitleArchiveMix
 
         # Comments include specific mention of removed or non HI
         non_hi_tag = ['hi remove', 'non hi', 'nonhi', 'non-hi', 'non-sdh', 'non sdh', 'nonsdh', 'sdh remove']
-        if any(x in item.get('commentary', '').lower() for x in non_hi_tag):
+        if isinstance(item.get('commentary'), str) and any(x in item.get('commentary', '').lower() for x in non_hi_tag):
             return False
 
         # Commentaries include some specific strings
         hi_tag = ['_hi_', ' hi ', '.hi.', 'hi ', ' hi', 'sdh', '𝓢𝓓𝓗', '_cc_', ' cc ', '.cc.', 'closed caption']
-        if any(x in item.get('commentary', '').lower() for x in hi_tag):
+        if isinstance(item.get('commentary'), str) and any(x in item.get('commentary', '').lower() for x in hi_tag):
             return True
 
         # nothing match so we consider it as non-HI
@@ -376,7 +376,7 @@ class SubsourceProvider(ProviderRetryMixin, Provider, ProviderSubtitleArchiveMix
 
         # Comments include specific mention of forced subtitles
         forced_tags = ['forced', 'foreign']
-        if any(x in item.get('commentary', '').lower() for x in forced_tags):
+        if isinstance(item.get('commentary'), str) and any(x in item.get('commentary', '').lower() for x in forced_tags):
             return True
 
         # nothing match so we consider it as normal subtitles
