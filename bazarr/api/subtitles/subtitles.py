@@ -15,6 +15,7 @@ from subtitles.tools.translate.main import translate_subtitles_file
 from subtitles.tools.mods import subtitles_apply_mods
 from subtitles.indexer.series import store_subtitles
 from subtitles.indexer.movies import store_subtitles_movie
+from subtitles.sync import sync_subtitles
 from app.config import settings, empty_values, get_array_from
 from app.event_handler import event_stream
 
@@ -141,32 +142,23 @@ class Subtitles(Resource):
             video_path = path_mappings.path_replace_movie(metadata.path)
 
         if action == 'sync':
-            sync_kwargs = {
-                'video_path': video_path,
-                'srt_path': subtitles_path,
-                'srt_lang': language,
-                'hi': hi,
-                'forced': forced,
-                'reference': args.get('reference') if args.get('reference') not in empty_values else video_path,
-                'max_offset_seconds': args.get('max_offset_seconds') if args.get('max_offset_seconds') not in
-                empty_values else str(settings.subsync.max_offset_seconds),
-                'no_fix_framerate': args.get('no_fix_framerate') == 'True',
-                'gss': args.get('gss') == 'True',
-            }
-
-            subsync = SubSyncer()
             try:
-                if media_type == 'episode':
-                    sync_kwargs['sonarr_series_id'] = metadata.sonarrSeriesId
-                    sync_kwargs['sonarr_episode_id'] = id
-                else:
-                    sync_kwargs['radarr_id'] = id
-                subsync.sync(**sync_kwargs)
+                sync_subtitles(video_path=video_path, srt_path=subtitles_path, srt_lang=language, hi=hi, forced=forced,
+                               percent_score=0,  # make sure to always sync when requested manually
+                               reference=args.get('reference') if args.get('reference') not in empty_values else
+                               video_path,
+                               max_offset_seconds=args.get('max_offset_seconds') if
+                               args.get('max_offset_seconds') not in empty_values else
+                               str(settings.subsync.max_offset_seconds),
+                               no_fix_framerate=args.get('no_fix_framerate') == 'True',
+                               gss=args.get('gss') == 'True',
+                               sonarr_series_id=metadata.sonarrSeriesId if media_type == "episode" else None,
+                               sonarr_episode_id=id if media_type == "episode" else None,
+                               radarr_id=id if media_type == "movie" else None,
+                               force_sync=True,
+                               )
             except OSError:
                 return 'Unable to edit subtitles file. Check logs.', 409
-            finally:
-                del subsync
-                gc.collect()
         elif action == 'translate':
             dest_language = language
             from_language = None

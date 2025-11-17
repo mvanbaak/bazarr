@@ -26,7 +26,7 @@ from .processing import process_subtitle
 @update_pools
 def generate_subtitles(path, languages, audio_language, sceneName, title, media_type, profile_id,
                        forced_minimum_score=None, is_upgrade=False, check_if_still_required=False,
-                       previous_subtitles_to_delete=None):
+                       previous_subtitles_to_delete=None, job_id=None):
     if not languages:
         return None
 
@@ -116,7 +116,7 @@ def generate_subtitles(path, languages, audio_language, sceneName, title, media_
                                 processed_subtitle = process_subtitle(subtitle=subtitle, media_type=media_type,
                                                                       audio_language=audio_language,
                                                                       is_upgrade=is_upgrade, is_manual=False,
-                                                                      path=path, max_score=max_score)
+                                                                      path=path, max_score=max_score, job_id=job_id)
                                 if not processed_subtitle:
                                     logging.debug(f"BAZARR unable to process this subtitles: {subtitle}")
                                     continue

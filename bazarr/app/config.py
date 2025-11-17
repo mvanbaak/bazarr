@@ -838,27 +838,27 @@ def save_settings(settings_items):
         from subtitles.indexer.series import list_missing_subtitles
         from subtitles.indexer.movies import list_missing_subtitles_movies
         if settings.general.use_sonarr:
-            scheduler.add_job(list_missing_subtitles, kwargs={'send_event': True})
+            list_missing_subtitles()
         if settings.general.use_radarr:
-            scheduler.add_job(list_missing_subtitles_movies, kwargs={'send_event': True})
+            list_missing_subtitles_movies()
 
     if undefined_subtitles_track_default_changed:
         from .scheduler import scheduler
         from subtitles.indexer.series import series_full_scan_subtitles
         from subtitles.indexer.movies import movies_full_scan_subtitles
         if settings.general.use_sonarr:
-            scheduler.add_job(series_full_scan_subtitles, kwargs={'use_cache': True})
+            series_full_scan_subtitles(use_cache=True)
         if settings.general.use_radarr:
-            scheduler.add_job(movies_full_scan_subtitles, kwargs={'use_cache': True})
+            movies_full_scan_subtitles(use_cache=True)
 
     if audio_tracks_parsing_changed:
         from .scheduler import scheduler
         if settings.general.use_sonarr:
             from sonarr.sync.series import update_series
-            scheduler.add_job(update_series, kwargs={'send_event': True}, max_instances=1)
+            update_series()
         if settings.general.use_radarr:
             from radarr.sync.movies import update_movies
-            scheduler.add_job(update_movies, kwargs={'send_event': True}, max_instances=1)
+            update_movies()
 
     if update_subzero:
         settings.general.subzero_mods = ','.join(subzero_mods)

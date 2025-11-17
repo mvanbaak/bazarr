@@ -24,7 +24,6 @@ import Language from "@/components/bazarr/Language";
 import StateIcon from "@/components/StateIcon";
 import PageTable from "@/components/tables/PageTable";
 import { withModal } from "@/modules/modals";
-import { task, TaskGroup } from "@/modules/task";
 import { GetItemId } from "@/utilities";
 
 type SupportType = Item.Movie | Item.Episode;
@@ -191,16 +190,10 @@ function ManualSearchView<T extends SupportType>(props: Props<T>) {
               icon={faDownload}
               c="brand"
               disabled={item === null}
-              onClick={() => {
+              onClick={async () => {
                 if (!item) return;
 
-                task.create(
-                  item.title,
-                  TaskGroup.DownloadSubtitle,
-                  download,
-                  item,
-                  result,
-                );
+                await download(item, result);
               }}
             ></Action>
           );
