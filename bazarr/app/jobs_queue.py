@@ -13,6 +13,8 @@ from typing import Union
 
 from app.event_handler import event_stream
 
+bazarr_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
 
 class Job:
     """
@@ -301,7 +303,7 @@ class JobsQueue:
         parent_function_name = caller_code.co_name
 
         # Get the file path of the parent function
-        relative_parent_function_path = os.path.relpath(caller_code.co_filename)
+        relative_parent_function_path = os.path.relpath(caller_code.co_filename, start=bazarr_dir)
         parent_function_path = os.path.splitext(relative_parent_function_path)[0].replace(os.sep, '.')
 
         # Get the function signature of the caller
