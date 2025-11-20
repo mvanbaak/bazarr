@@ -152,6 +152,7 @@ class TableBlacklistMovie(Base):
 class TableEpisodes(Base):
     __tablename__ = 'table_episodes'
 
+    absoluteEpisode = mapped_column(Integer)
     audio_codec = mapped_column(Text)
     audio_language = mapped_column(Text)
     created_at_timestamp = mapped_column(DateTime)
