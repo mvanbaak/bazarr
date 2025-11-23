@@ -275,6 +275,24 @@ class JobsQueue:
 
         return payload
 
+    def update_job_progress_status(self, job_id: int, is_progress: bool = False) -> bool:
+        """
+        Updates the is_progress attribute for a specific job.
+
+        :param job_id: The unique identifier of the job to be updated.
+        :type job_id: int
+        :param is_progress: The new value for is_progress attribute.
+        :type is_progress: bool
+        :return: Returns True if the job's progress status was successfully updated, otherwise False.
+        :rtype: bool
+        """
+        for job in self.jobs_running_queue:
+            if job.job_id == job_id:
+                job.is_progress = is_progress
+                event_stream(type='jobs', action='update', payload={"job_id": job.job_id})
+                return True
+        return False
+
     def add_job_from_function(self, job_name: str, is_progress: bool, progress_max: int = 0):
         """
         Adds a job to the pending queue using the details of the calling function. The job is then executed, and the

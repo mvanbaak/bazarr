@@ -23,7 +23,8 @@ def sync_subtitles(video_path,
                    gss=settings.subsync.gss,
                    no_fix_framerate=settings.subsync.no_fix_framerate,
                    reference=None,
-                   force_sync=False):
+                   force_sync=False,
+                   job_sub_function=False):
     if not settings.subsync.use_subsync and not force_sync:
         logging.debug('BAZARR automatic syncing is disabled in settings. Skipping sync routine.')
         return False
@@ -31,6 +32,9 @@ def sync_subtitles(video_path,
     if not job_id:
         jobs_queue.add_job_from_function("Syncing Subtitle", is_progress=True)
         return False
+
+    if job_sub_function:
+        jobs_queue.update_job_progress_status(job_id=job_id, is_progress=True)
 
     jobs_queue.update_job_progress(job_id=job_id, progress_message=f"Syncing {srt_path}")
 
