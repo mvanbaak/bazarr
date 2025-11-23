@@ -192,7 +192,7 @@ class Subtitles(Resource):
             use_original_format = True if args.get('original_format') == 'true' else False
             try:
                 subtitles_apply_mods(language=language, subtitle_path=subtitles_path, mods=[action],
-                                     use_original_format=use_original_format, video_path=video_path)
+                                     video_path=video_path)
             except OSError:
                 return 'Unable to edit subtitles file. Check logs.', 409
 

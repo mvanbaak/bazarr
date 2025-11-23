@@ -114,6 +114,9 @@ def manual_search(path, profile_id, providers, sceneName, title, media_type):
                 else:
                     s_uploader = None
 
+                if original_format in (1, "1", "True", True):
+                    s.use_original_format = True
+
                 subtitles_list.append(
                     dict(score=round((score / max_score * 100), 2),
                          orig_score=score,
@@ -124,7 +127,7 @@ def manual_search(path, profile_id, providers, sceneName, title, media_type):
                          provider=s.provider_name,
                          subtitle=codecs.encode(pickle.dumps(s.make_picklable()), "base64").decode(),
                          url=s.page_link,
-                         original_format=original_format,
+                         original_format=s.use_original_format,
                          matches=list(matches),
                          dont_matches=list(not_matched),
                          release_info=releases,
