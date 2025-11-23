@@ -40,7 +40,6 @@ def sync_subtitles(video_path,
 
     if forced:
         logging.debug('BAZARR cannot sync forced subtitles. Skipping sync routine.')
-        jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
     else:
         logging.debug(f'BAZARR automatic syncing is enabled in settings. We\'ll try to sync this '
                       f'subtitles: {srt_path}.')
@@ -89,4 +88,5 @@ def sync_subtitles(video_path,
             logging.debug(f"BAZARR subsync skipped because subtitles score isn't below this "
                           f"threshold value: {subsync_threshold}%")
 
+    jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
     return False
