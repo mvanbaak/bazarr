@@ -49,7 +49,7 @@ def check_actual_file_size(original_episode_path):
     return bazarr_file_size > MINIMUM_VIDEO_SIZE
 
 
-def sync_episodes(series_id, defer_search=False, **kwargs):
+def sync_episodes(series_id, **kwargs):
     logging.debug(f'BAZARR Starting episodes sync from Sonarr for series ID {series_id}.')
     apikey_sonarr = settings.sonarr.apikey
 
@@ -171,24 +171,6 @@ def sync_episodes(series_id, defer_search=False, **kwargs):
             else:
                 store_subtitles(updated_episode['path'], path_mappings.path_replace(updated_episode['path']))
                 event_stream(type='episode', action='update', payload=updated_episode['sonarrEpisodeId'])
-
-    # Downloading missing subtitles
-    for episode in episodes_to_add + episodes_to_update:
-        episode_id = episode['sonarrEpisodeId']
-        if defer_search:
-            logging.debug(
-                f'BAZARR searching for missing subtitles is deferred until scheduled task execution for this episode: '
-                f'{path_mappings.path_replace(episode["path"])}')
-        else:
-            mapped_episode_path = path_mappings.path_replace(episode["path"])
-            if os.path.exists(mapped_episode_path):
-                logging.debug(f'BAZARR downloading missing subtitles for this episode: {mapped_episode_path}')
-                episode_download_subtitles(no=episode_id, job_sub_function=True)
-            else:
-                logging.debug(
-                    f'BAZARR cannot find this file yet (Sonarr may be slow to import episode between disks?). '
-                    f'Searching for missing subtitles is deferred until scheduled task execution for this episode'
-                    f': {mapped_episode_path}')
 
     logging.debug(f'BAZARR All episodes from series ID {series_id} synced from Sonarr into database.')
 

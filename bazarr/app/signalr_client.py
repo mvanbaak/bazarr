@@ -302,8 +302,7 @@ def dispatcher(data):
                                                    'sonarr.sync.episodes',
                                                    'sync_episodes',
                                                    [],
-                                                   {'series_id': media_id,
-                                                    'defer_search': settings.sonarr.defer_search_signalr})
+                                                   {'series_id': media_id})
             else:
                 jobs_queue.feed_jobs_pending_queue(f'Update series {series_title} ({series_year})',
                                                    'sonarr.sync.series',
