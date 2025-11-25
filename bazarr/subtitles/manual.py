@@ -145,7 +145,7 @@ def manual_search(path, profile_id, providers, sceneName, title, media_type):
 
 @update_pools
 def manual_download_subtitle(path, audio_language, hi, forced, subtitle, provider, sceneName, title, media_type,
-                             use_original_format, profile_id):
+                             use_original_format, profile_id, job_id=None):
     logging.debug(f'BAZARR Manually downloading Subtitles for this file: {path}')
 
     if settings.general.utf8_encode:
@@ -201,7 +201,8 @@ def manual_download_subtitle(path, audio_language, hi, forced, subtitle, provide
                     for saved_subtitle in saved_subtitles:
                         processed_subtitle = process_subtitle(subtitle=saved_subtitle, media_type=media_type,
                                                               audio_language=audio_language, is_upgrade=False,
-                                                              is_manual=True, path=path, max_score=max_score)
+                                                              is_manual=True, path=path, max_score=max_score,
+                                                              job_id=job_id)
                         if processed_subtitle:
                             return processed_subtitle
                         else:
@@ -251,7 +252,7 @@ def episode_manually_download_specific_subtitle(sonarr_series_id, sonarr_episode
     try:
         result = manual_download_subtitle(episodePath, audio_language, hi, forced, subtitle, selected_provider,
                                           sceneName, title, 'series', use_original_format,
-                                          profile_id=get_profile_id(episode_id=sonarr_episode_id))
+                                          profile_id=get_profile_id(episode_id=sonarr_episode_id), job_id=job_id)
     except OSError:
         return 'Unable to save subtitles file', 500
     else:
@@ -296,7 +297,7 @@ def movie_manually_download_specific_subtitle(radarr_id, hi, forced, use_origina
     try:
         result = manual_download_subtitle(moviePath, audio_language, hi, forced, subtitle, selected_provider,
                                           sceneName, title, 'movie', use_original_format,
-                                          profile_id=get_profile_id(movie_id=radarr_id))
+                                          profile_id=get_profile_id(movie_id=radarr_id), job_id=job_id)
     except OSError:
         return 'Unable to save subtitles file', 500
     else:

@@ -86,7 +86,6 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
             break
 
     if languages:
-        i = 0
         for result in generate_subtitles(moviePath,
                                          languages,
                                          audio_language,
@@ -96,8 +95,6 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
                                          movie.profileId,
                                          check_if_still_required=True,
                                          job_id=job_id):
-            i += 1
-
             if result:
                 if isinstance(result, tuple) and len(result):
                     result = result[0]
@@ -105,7 +102,7 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
                 history_log_movie(1, no, result)
                 send_notifications_movie(no, result.message)
 
-            jobs_queue.update_job_progress(job_id=job_id, progress_value=i)
+            jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
 
 
 def movie_download_specific_subtitles(radarr_id, language, hi, forced, job_id=None):
