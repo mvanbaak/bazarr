@@ -59,8 +59,8 @@ def manual_search(path, profile_id, providers, sceneName, title, media_type):
             else:
                 logging.info("BAZARR All providers are throttled")
                 return 'All providers are throttled'
-        except Exception:
-            logging.exception(f"BAZARR Error trying to get Subtitle list from provider for this file: {path}")
+        except Exception as e:
+            logging.exception(f"BAZARR Error trying to get Subtitle list from provider for this file {path}: {repr(e)}")
         else:
             subtitles_list = []
             minimum_score = settings.general.minimum_score
@@ -192,8 +192,8 @@ def manual_download_subtitle(path, audio_language, hi, forced, subtitle, provide
                                                  chmod=chmod,
                                                  formats=(subtitle.format,),
                                                  path_decoder=force_unicode)
-            except Exception:
-                logging.exception(f'BAZARR Error saving Subtitles file to disk for this file: {path}')
+            except Exception as e:
+                logging.exception(f'BAZARR Error saving Subtitles file to disk for this file {path}: {repr(e)}')
                 return 'Error saving Subtitles file to disk'
             else:
                 if saved_subtitles:

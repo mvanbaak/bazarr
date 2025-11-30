@@ -73,13 +73,17 @@ def generate_subtitles(path, languages, audio_language, sceneName, title, media_
                                   f"has been reached during this search.")
                     continue
                 else:
-                    downloaded_subtitles = download_best_subtitles(videos={video},
-                                                                   languages={language},
-                                                                   pool_instance=pool,
-                                                                   min_score=int(min_score),
-                                                                   hearing_impaired=hi_required,
-                                                                   compute_score=ComputeScore(get_scores()),
-                                                                   use_original_format=original_format in (1, "1", "True", True))
+                    try:
+                        downloaded_subtitles = download_best_subtitles(videos={video},
+                                                                       languages={language},
+                                                                       pool_instance=pool,
+                                                                       min_score=int(min_score),
+                                                                       hearing_impaired=hi_required,
+                                                                       compute_score=ComputeScore(get_scores()),
+                                                                       use_original_format=original_format in (1, "1", "True", True))
+                    except Exception as e:
+                        logging.exception(f'BAZARR Error downloading Subtitles for this file {path}: {repr(e)}')
+                        return None
 
                 if downloaded_subtitles:
                     for video, subtitles in downloaded_subtitles.items():
