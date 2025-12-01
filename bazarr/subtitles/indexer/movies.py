@@ -96,8 +96,8 @@ def store_subtitles_movie(original_path, reversed_path, use_cache=True):
                     full_dest_folder_path = os.path.join(os.path.dirname(reversed_path), dest_folder)
             subtitles = guess_external_subtitles(full_dest_folder_path, subtitles, "movie",
                                                  previously_indexed_subtitles_to_exclude)
-        except Exception:
-            logging.exception("BAZARR unable to index external subtitles.")
+        except Exception as e:
+            logging.exception(f"BAZARR unable to index external subtitles for this file {reversed_path}: {repr(e)}")
         else:
             for subtitle, language in subtitles.items():
                 valid_language = False
