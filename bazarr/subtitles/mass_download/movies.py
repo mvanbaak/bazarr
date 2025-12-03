@@ -43,6 +43,7 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
 
     if not movie:
         logging.debug(f"BAZARR no movie with that radarrId can be found in database: {no}")
+        jobs_queue.update_job_progress(job_id=job_id, progress_message="Movie not found in database.")
         return
     elif movie.subtitles is None:
         # subtitles indexing for this movie is incomplete, we'll do it again
@@ -56,6 +57,8 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
     moviePath = path_mappings.path_replace_movie(movie.path)
 
     if not os.path.exists(moviePath):
+        logging.debug(f"BAZARR movie file not found. Path mapping issue?: {moviePath}")
+        jobs_queue.update_job_progress(job_id=job_id, progress_message=f"Movie path doesn't exists: {moviePath}")
         raise OSError
 
     if ast.literal_eval(movie.missing_subtitles):
@@ -73,36 +76,35 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
 
     jobs_queue.update_job_progress(job_id=job_id, progress_max=count_movie, progress_message=movie.title)
 
-    for language in ast.literal_eval(movie.missing_subtitles):
-        providers_list = get_providers()
+    providers_list = get_providers()
 
-        if providers_list:
+    if providers_list:
+        for language in ast.literal_eval(movie.missing_subtitles):
             if language is not None:
                 hi_ = "True" if language.endswith(':hi') else "False"
                 forced_ = "True" if language.endswith(':forced') else "False"
                 languages.append((language.split(":")[0], hi_, forced_))
-        else:
-            logging.info("BAZARR All providers are throttled")
-            break
 
-    if languages:
-        for result in generate_subtitles(moviePath,
-                                         languages,
-                                         audio_language,
-                                         str(movie.sceneName),
-                                         movie.title,
-                                         'movie',
-                                         movie.profileId,
-                                         check_if_still_required=True,
-                                         job_id=job_id):
-            if result:
-                if isinstance(result, tuple) and len(result):
-                    result = result[0]
-                store_subtitles_movie(movie.path, moviePath)
-                history_log_movie(1, no, result)
-                send_notifications_movie(no, result.message)
+        if languages:
+            for result in generate_subtitles(moviePath,
+                                             languages,
+                                             audio_language,
+                                             str(movie.sceneName),
+                                             movie.title,
+                                             'movie',
+                                             movie.profileId,
+                                             check_if_still_required=True,
+                                             job_id=job_id):
+                if result:
+                    if isinstance(result, tuple) and len(result):
+                        result = result[0]
+                    store_subtitles_movie(movie.path, moviePath)
+                    history_log_movie(1, no, result)
+                    send_notifications_movie(no, result.message)
+    else:
+        logging.info("BAZARR All providers are throttled")
 
-            jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
+    jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
 
 
 def movie_download_specific_subtitles(radarr_id, language, hi, forced, job_id=None):
