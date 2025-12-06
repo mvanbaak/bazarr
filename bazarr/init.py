@@ -153,7 +153,7 @@ subliminal.region.backend.sync()
 
 if not os.path.exists(os.path.join(args.config_dir, 'config', 'releases.txt')):
     from app.check_update import check_releases
-    check_releases()
+    check_releases(startup=True)
     logging.debug("BAZARR Created releases file")
 
 if not os.path.exists(os.path.join(args.config_dir, 'config', 'announcements.txt')):
