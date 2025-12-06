@@ -158,7 +158,7 @@ if not os.path.exists(os.path.join(args.config_dir, 'config', 'releases.txt')):
 
 if not os.path.exists(os.path.join(args.config_dir, 'config', 'announcements.txt')):
     from app.announcements import get_announcements_to_file
-    get_announcements_to_file()
+    get_announcements_to_file(startup=True)
     logging.debug("BAZARR Created announcements file")
 
 # Move GA visitor from config to dedicated file
