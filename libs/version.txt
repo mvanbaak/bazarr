@@ -132,6 +132,7 @@ webencodings==0.5.1
 
 # Required-by: subzero
 backports.functools-lru-cache==2.0.0
+emoji==2.15.0
 fcache==0.6.0
 json_tricks==3.17.3
 tld==0.13
