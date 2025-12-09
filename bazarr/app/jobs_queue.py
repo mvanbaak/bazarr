@@ -373,6 +373,24 @@ class JobsQueue:
                     return True
         return False
 
+    def empty_jobs_queue(self, queue_name: str):
+        """
+        Empties the jobs queue for a specified queue name if it exists among the predefined
+        queue categories ('pending', 'failed', 'completed'). Clears all elements within the
+        specified queue and indicates success or failure for the operation.
+
+        :param queue_name: The name of the queue to be emptied ('pending', 'failed', or 'completed').
+        :type queue_name: str
+
+        :return: A boolean value indicating whether the specified queue was successfully emptied.
+        :rtype: bool
+        """
+        if queue_name in ['pending', 'failed', 'completed']:
+            logging.debug(f"Emptying jobs queue for {queue_name} jobs")
+            getattr(self, f'jobs_{queue_name}_queue').clear()
+            return True
+        return False
+
     def consume_jobs_pending_queue(self):
         """
         Consume and execute jobs from the jobs pending queue until the queue is empty or interrupted. This

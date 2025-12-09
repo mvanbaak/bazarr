@@ -54,6 +54,16 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
     },
   });
 
+  const { mutate: clearQueue } = useMutation({
+    mutationKey: [QueryKeys.System, QueryKeys.Jobs, "clear"],
+    mutationFn: (queueName: string) => api.system.clearJobs(queueName),
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: [QueryKeys.System, QueryKeys.Jobs],
+      });
+    },
+  });
+
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
   >({
@@ -120,12 +130,7 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                   .filter((status) => grouped[status as string]?.length)
                   .map((status) => (
                     <Stack key={status} mt="md">
-                      <Group
-                        justify="space-between"
-                        wrap="nowrap"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => toggleSection(status)}
-                      >
+                      <Group justify="space-between" wrap="nowrap">
                         <Group gap="xs">
                           <FontAwesomeIcon
                             icon={
@@ -134,9 +139,34 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                 : faChevronUp
                             }
                             size="sm"
-                            style={{ opacity: 0.5 }}
+                            style={{ opacity: 0.5, cursor: "pointer" }}
+                            onClick={() => toggleSection(status)}
                           />
                           <Title order={3}>{startCase(status)}</Title>
+                          {status !== "running" && (
+                            <Menu position="bottom-end" withArrow>
+                              <Menu.Target>
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="gray"
+                                  size="sm"
+                                >
+                                  <FontAwesomeIcon icon={faEllipsis} />
+                                </ActionIcon>
+                              </Menu.Target>
+                              <Menu.Dropdown>
+                                <Menu.Item
+                                  color="red"
+                                  leftSection={
+                                    <FontAwesomeIcon icon={faXmark} />
+                                  }
+                                  onClick={() => clearQueue(status)}
+                                >
+                                  Clear this queue
+                                </Menu.Item>
+                              </Menu.Dropdown>
+                            </Menu>
+                          )}
                         </Group>
                         <Text size="xs" c="dimmed">
                           {grouped[status as string].length} job

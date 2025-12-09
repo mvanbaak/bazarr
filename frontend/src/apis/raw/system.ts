@@ -90,6 +90,10 @@ class SystemApi extends BaseApi {
     await this.delete("/jobs", { id });
   }
 
+  async clearJobs(queueName: string) {
+    await this.patch("/jobs", { queueName });
+  }
+
   async releases() {
     const response = await this.get<DataWrapper<ReleaseInfo[]>>("/releases");
     return response.data;
