@@ -404,7 +404,7 @@ class JobsQueue:
         :raises SystemExit: If a termination request (via SystemExit) occurs, the method halts execution.
         """
         while True:
-            if self.jobs_pending_queue:
+            if not self.jobs_running_queue and self.jobs_pending_queue:
                 try:
                     job = self.jobs_pending_queue.popleft()
                 except IndexError:
