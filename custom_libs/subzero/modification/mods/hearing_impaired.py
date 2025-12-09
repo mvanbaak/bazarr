@@ -99,8 +99,8 @@ class HearingImpaired(SubtitleTextModification):
         NReProcessor(re.compile(r'(?u)^(?=[A-ZÀ-Ž]{4,})[A-ZÀ-Ž-_\s]+\s([A-ZÀ-Ž][a-zà-ž].+)'), r"\1",
                      name="HI_starting_upper_then_sentence", supported=lambda p: not p.mostly_uppercase),
 
-        # remove japanese parentheses
-        NReProcessor(re.compile(r'(?u)（.+）'), "",
+        # remove normal and Japanese parentheses only for Japanese subtitles
+        NReProcessor(re.compile(r'(?u)（.+）|\(.+\)'), "",
                      name="JP_parentheses",
                      # https://en.wikipedia.org/wiki/Japanese_punctuation#Parentheses
                      supported=lambda p: p.language == JAPANESE),
