@@ -332,9 +332,16 @@ declare namespace Plex {
     url: string;
   }
 
+  interface PlexPassSubscription {
+    active: boolean;
+    has_webhooks_feature: boolean;
+    plan: string | null;
+  }
+
   interface WebhookList {
     webhooks: WebhookInfo[];
     count: number;
+    plexPassSubscription?: PlexPassSubscription;
   }
 
   interface AutopulseResult {

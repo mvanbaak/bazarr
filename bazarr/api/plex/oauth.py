@@ -9,6 +9,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import request
 from flask_restx import Resource, reqparse, abort
+from plexapi.exceptions import BadRequest
 
 from . import api_ns_plex
 from .exceptions import *
@@ -69,6 +70,39 @@ def get_decrypted_token():
                 return None
 
         return decrypt_token(apikey)
+
+
+def check_plex_pass_feature(account, feature_name):
+    """
+    Check if a Plex account has access to a specific Plex Pass feature.
+    
+    This helper function can be reused across the codebase to check for
+    any Plex Pass feature (webhooks, sync, hardware_transcoding, etc.)
+    
+    Args:
+        account: MyPlexAccount instance
+        feature_name: The feature to check (e.g., 'webhooks', 'sync')
+    
+    Returns:
+        tuple: (has_feature: bool, error_message: str or None)
+               - (True, None) if feature is available
+               - (False, error_message) if feature is not available
+    """
+    # Check if subscription is active first
+    if not account.subscriptionActive:
+        return False, (
+            f'Plex Pass subscription required. The "{feature_name}" feature requires Plex Pass. '
+            'Please subscribe at https://www.plex.tv/plans/'
+        )
+    
+    # Check if specific feature is in the subscription features list
+    if feature_name not in account.subscriptionFeatures:
+        return False, (
+            f'The "{feature_name}" feature is not available for your Plex account. '
+            'This may require a different Plex Pass tier or the feature may be disabled.'
+        )
+    
+    return True, None
 
 
 def validate_plex_token(token):
@@ -805,6 +839,12 @@ class PlexWebhookCreate(Resource):
             # Create account instance with OAuth token
             account = MyPlexAccount(token=decrypted_token)
             
+            # Check if user has Plex Pass with webhooks feature
+            has_webhooks, error_msg = check_plex_pass_feature(account, 'webhooks')
+            if not has_webhooks:
+                logger.warning(f"Plex Pass check failed for webhooks: {error_msg}")
+                return {'error': error_msg}, 403
+            
             # Build webhook URL for this Bazarr instance
             # Try to get base URL from settings first, then fall back to request host
             configured_base_url = getattr(settings.general, 'base_url', '').rstrip('/')
@@ -865,6 +905,23 @@ class PlexWebhookCreate(Resource):
                 }
             }
 
+        except BadRequest as e:
+            error_msg = str(e)
+            logger.error(f"Plex API rejected webhook creation: {error_msg}")
+            
+            # Parse common Plex error scenarios
+            if '422' in error_msg:
+                if '1998' in error_msg or 'validation' in error_msg.lower():
+                    return {
+                        'error': 'Plex rejected the webhook. This usually means:\n'
+                                 '1. Plex Pass subscription is required but not active\n'
+                                 '2. The webhook URL is not publicly accessible\n'
+                                 '3. Maximum webhook limit reached (check plex.tv/webhooks)\n'
+                                 f'Technical details: {error_msg}'
+                    }, 422
+            
+            return {'error': f'Plex API error: {error_msg}'}, 502
+
         except Exception as e:
             logger.error(f"Failed to create Plex webhook: {e}")
             return {'error': f'Failed to create webhook: {str(e)}'}, 502
@@ -905,7 +962,12 @@ class PlexWebhookList(Resource):
             return {
                 'data': {
                     'webhooks': webhook_list,
-                    'count': len(webhook_list)
+                    'count': len(webhook_list),
+                    'plexPassSubscription': {
+                        'active': account.subscriptionActive,
+                        'has_webhooks_feature': 'webhooks' in account.subscriptionFeatures,
+                        'plan': getattr(account, 'subscriptionPlan', None)
+                    }
                 }
             }
 

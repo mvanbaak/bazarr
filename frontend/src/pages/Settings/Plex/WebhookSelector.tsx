@@ -42,6 +42,10 @@ const WebhookSelector: FunctionComponent<WebhookSelectorProps> = (props) => {
     w.url.includes("/api/webhooks/plex"),
   );
 
+  // Check Plex Pass subscription status for webhooks feature
+  const plexPassSubscription = webhooks?.plexPassSubscription;
+  const hasWebhooksFeature = plexPassSubscription?.has_webhooks_feature ?? true;
+
   // Create select data with Bazarr webhook first if it exists
   const selectData =
     webhooks?.webhooks
@@ -156,13 +160,36 @@ const WebhookSelector: FunctionComponent<WebhookSelectorProps> = (props) => {
               onClick={handleCreateWebhook}
               loading={createMutation.isPending}
               size="sm"
+              disabled={!hasWebhooksFeature}
             >
               Add
             </Button>
           </Group>
-          <Alert color="brand" variant="light" className={styles.alertMessage}>
-            No webhooks found on your Plex server.
-          </Alert>
+          {!hasWebhooksFeature && (
+            <Alert
+              color="brand"
+              variant="light"
+              className={styles.alertMessage}
+            >
+              Webhooks require a Plex Pass subscription.{" "}
+              <a
+                href="https://www.plex.tv/plans/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Learn more
+              </a>
+            </Alert>
+          )}
+          {hasWebhooksFeature && (
+            <Alert
+              color="brand"
+              variant="light"
+              className={styles.alertMessage}
+            >
+              No webhooks found on your Plex server.
+            </Alert>
+          )}
         </Stack>
       </div>
     );
@@ -171,14 +198,30 @@ const WebhookSelector: FunctionComponent<WebhookSelectorProps> = (props) => {
   return (
     <div className={styles.webhookSelector}>
       <Stack gap="xs">
+        <div>
+          <Text fw={500} className={styles.labelText}>
+            {label}
+          </Text>
+          <Text size="sm" c="dimmed">
+            {description ||
+              "Create or remove webhooks in Plex to trigger subtitle searches. In this list you can find your current webhooks."}
+          </Text>
+        </div>
+        {!hasWebhooksFeature && (
+          <Alert color="brand" variant="light" className={styles.alertMessage}>
+            Webhooks require a Plex Pass subscription.{" "}
+            <a
+              href="https://www.plex.tv/plans/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn more
+            </a>
+          </Alert>
+        )}
         <Select
-          label={label}
           placeholder="Select webhook..."
           data={selectData}
-          description={
-            description ||
-            "Create or remove webhooks in Plex to trigger subtitle searches. In this list you can find your current webhooks."
-          }
           value={currentValue}
           onChange={(value) => setSelectedWebhookUrl(value || "")}
           allowDeselect={false}
@@ -191,6 +234,7 @@ const WebhookSelector: FunctionComponent<WebhookSelectorProps> = (props) => {
               onClick={handleCreateWebhook}
               loading={createMutation.isPending}
               size="sm"
+              disabled={!hasWebhooksFeature}
             >
               Add
             </Button>
