@@ -2,10 +2,13 @@
 
 import logging
 import os
+import operator
+
 from datetime import datetime
+from functools import reduce
 
 from app.config import settings
-from app.database import TableMovies, TableLanguagesProfiles, database, insert, update, delete, select
+from app.database import TableMovies, TableLanguagesProfiles, database, insert, update, delete, select, get_exclusion_clause
 from app.event_handler import event_stream
 from app.jobs_queue import jobs_queue
 from constants import MINIMUM_VIDEO_SIZE
@@ -208,7 +211,7 @@ def update_movies(job_id=None):
             logging.debug('BAZARR All movies synced from Radarr into database.')
 
 
-def update_one_movie(movie_id, action, defer_search=False, **kwargs):
+def update_one_movie(movie_id, action, defer_search=False, is_signalr=False):
     logging.debug(f'BAZARR syncing this specific movie from Radarr: {movie_id}')
 
     # Check if there's a row in the database for this movie ID
@@ -322,11 +325,34 @@ def update_one_movie(movie_id, action, defer_search=False, **kwargs):
             f'BAZARR searching for missing subtitles is deferred until scheduled task execution for this movie: '
             f'{path_mappings.path_replace_movie(movie["path"])}')
     else:
-        mapped_movie_path = path_mappings.path_replace_movie(movie["path"])
-        if os.path.exists(mapped_movie_path):
-            logging.debug(f'BAZARR downloading missing subtitles for this movie: {mapped_movie_path}')
-            movies_download_subtitles(no=movie_id, job_id=kwargs.get('job_id'), job_sub_function=True)
+        if os.path.exists(path_mappings.path_replace_movie(movie["path"])):
+            logging.debug(f'BAZARR downloading missing subtitles for this movie: {movie["title"]} ({movie["year"]})')
+            if _is_there_missing_subtitles(radarr_id=movie_id):
+                jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for movie '
+                                                            f'{movie["title"]} ({movie["year"]})',
+                                                   module='subtitles.mass_download.movies',
+                                                   func='movies_download_subtitles',
+                                                   args=[],
+                                                   kwargs={'no': movie_id},
+                                                   is_signalr=is_signalr)
+            else:
+                logging.debug(f'BAZARR no missing subtitles for this movie: {movie["title"]} ({movie["year"]})')
         else:
             logging.debug(f'BAZARR cannot find this file yet (Radarr may be slow to import movie between disks?). '
                           f'Searching for missing subtitles is deferred until scheduled task execution for this movie: '
-                          f'{mapped_movie_path}')
+                          f'{movie["title"]} ({movie["year"]})')
+
+
+def _is_there_missing_subtitles(radarr_id: int) -> bool:
+    movies_conditions = [(TableMovies.missing_subtitles.is_not(None)),
+                         (TableMovies.missing_subtitles != '[]'),
+                         (TableMovies.radarrId == radarr_id)]
+    if not radarr_id:
+        return False
+    movies_conditions += get_exclusion_clause('movie')
+    missing_movies = database.execute(
+        select(TableMovies.missing_subtitles)
+        .select_from(TableMovies)
+        .where(reduce(operator.and_, movies_conditions))) \
+        .all()
+    return len(missing_movies) > 0

@@ -43,6 +43,8 @@ class Job:
     :type last_run_time: datetime
     :ivar is_progress: Indicates whether the job is a progress job, defaults to False.
     :type is_progress: bool
+    :ivar is_signalr: Indicates whether the job as been initiated by a SignalR event, defaults to False.
+    :type is_signalr: bool
     :ivar progress_value: Actual value of the job's progress, initialized to 0.
     :type progress_value: int
     :ivar progress_max: Maximum value of the job's progress, initialized to 0.
@@ -53,7 +55,7 @@ class Job:
     :type job_returned_value: Any
     """
     def __init__(self, job_id: int, job_name: str, module: str, func: str, args: list = None, kwargs: dict = None,
-                 is_progress=False, progress_max: int = 0, job_returned_value=None,):
+                 is_progress: bool = False, is_signalr: bool = False, progress_max: int = 0, job_returned_value=None,):
         self.job_id = job_id
         self.job_name = job_name
         self.module = module
@@ -63,6 +65,7 @@ class Job:
         self.status = 'pending'
         self.last_run_time = datetime.now()
         self.is_progress = is_progress
+        self.is_signalr = is_signalr
         self.progress_value = 0
         self.progress_max = progress_max
         self.progress_message = ""
@@ -99,7 +102,7 @@ class JobsQueue:
         self.current_job_id = 0
 
     def feed_jobs_pending_queue(self, job_name, module, func, args: list = None, kwargs: dict = None,
-                                is_progress=False, progress_max: int = 0,):
+                                is_progress=False, is_signalr=False, progress_max: int = 0,):
         """
         Adds a new job to the pending jobs queue with specified details and triggers an event
         to notify about the queue update. Each job is uniquely identified by a job ID,
@@ -118,6 +121,8 @@ class JobsQueue:
         :type kwargs: dict
         :param is_progress: Indicates whether the job is a progress job, defaults to False.
         :type is_progress: bool
+        :param is_signalr: Indicates whether the job as been initiated by a SignalR event, defaults to False.
+        :type is_signalr: bool
         :param progress_max: Maximum value of the job's progress, initialized to 0.
         :type progress_max: int
         :return: The unique job ID assigned to the newly queued job.
@@ -137,6 +142,7 @@ class JobsQueue:
                 args=args,
                 kwargs=kwargs,
                 is_progress=is_progress,
+                is_signalr=is_signalr,
                 progress_max=progress_max,)
         )
         logging.debug(f"Task {job_name} ({new_job_id}) added to queue")

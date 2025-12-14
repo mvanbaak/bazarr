@@ -18,6 +18,7 @@ import {
   faChevronDown,
   faChevronUp,
   faEllipsis,
+  faTowerBroadcast,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -213,11 +214,15 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                         sections={[
                                           {
                                             value:
-                                              job.progress_max > 0
-                                                ? (job.progress_value /
-                                                    job.progress_max) *
-                                                  100
-                                                : 0,
+                                              status === "completed" &&
+                                              job.progress_max == 0 &&
+                                              job.progress_value == 0
+                                                ? 100
+                                                : job.progress_max > 0
+                                                  ? (job.progress_value /
+                                                      job.progress_max) *
+                                                    100
+                                                  : 0,
                                             color: "brand",
                                           },
                                         ]}
@@ -231,13 +236,17 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                             }
                                             fw={700}
                                           >
-                                            {job.progress_max > 0
-                                              ? Math.round(
-                                                  (job.progress_value /
-                                                    job.progress_max) *
-                                                    100,
-                                                )
-                                              : 0}
+                                            {status === "completed" &&
+                                            job.progress_max == 0 &&
+                                            job.progress_value == 0
+                                              ? 100
+                                              : job.progress_max > 0
+                                                ? Math.round(
+                                                    (job.progress_value /
+                                                      job.progress_max) *
+                                                      100,
+                                                  )
+                                                : 0}
                                             %
                                           </Text>
                                         }
@@ -261,6 +270,12 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                       <Text fw={500} size="sm" lineClamp={1}>
                                         {job?.job_name}
                                       </Text>
+                                      {job?.is_signalr && (
+                                        <FontAwesomeIcon
+                                          title={"Live event initiated"}
+                                          icon={faTowerBroadcast}
+                                        />
+                                      )}
                                       <Group gap={4} style={{ flexShrink: 0 }}>
                                         {status === "pending" ? (
                                           <Menu position="bottom-end" withArrow>

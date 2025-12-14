@@ -22,6 +22,7 @@ declare namespace System {
     status: string;
     last_run_time: string;
     is_progress: boolean;
+    is_signalr: boolean;
     progress_value: number;
     progress_max: number;
     progress_message: string;

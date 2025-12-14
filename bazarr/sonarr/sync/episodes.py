@@ -2,12 +2,14 @@
 
 import os
 import logging
+import operator
 from constants import MINIMUM_VIDEO_SIZE
 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from functools import reduce
 
-from app.database import database, TableShows, TableEpisodes, delete, update, insert, select
+from app.database import database, TableShows, TableEpisodes, delete, update, insert, select, get_exclusion_clause
 from app.config import settings
 from utilities.path_mappings import path_mappings
 from subtitles.indexer.series import store_subtitles, series_full_scan_subtitles
@@ -49,7 +51,7 @@ def check_actual_file_size(original_episode_path):
     return bazarr_file_size > MINIMUM_VIDEO_SIZE
 
 
-def sync_episodes(series_id, **kwargs):
+def sync_episodes(series_id, defer_search=False, is_signalr=False):
     logging.debug(f'BAZARR Starting episodes sync from Sonarr for series ID {series_id}.')
     apikey_sonarr = settings.sonarr.apikey
 
@@ -172,10 +174,46 @@ def sync_episodes(series_id, **kwargs):
                 store_subtitles(updated_episode['path'], path_mappings.path_replace(updated_episode['path']))
                 event_stream(type='episode', action='update', payload=updated_episode['sonarrEpisodeId'])
 
+    # Downloading missing subtitles
+    series_data = database.execute(
+        select(TableShows.title,
+               TableShows.year,
+               TableShows.path)
+        .where(TableShows.sonarrSeriesId == series_id)
+    ).first()
+    if not series_data:
+        pass
+    else:
+        if defer_search:
+            logging.debug(
+                f'BAZARR searching for missing subtitles is deferred until scheduled task execution for this series: '
+                f'{series_data.title} ({series_data.year})')
+        else:
+            if os.path.exists(path_mappings.path_replace(series_data.path)):
+                logging.debug(f'BAZARR downloading missing subtitles for this series: {series_data.title} '
+                              f'({series_data.year})')
+                if _is_there_missing_subtitles(series_id=series_id):
+                    jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles episodes for series '
+                                                       f'{series_data.title} ({series_data.year})',
+                                                       module='subtitles.mass_download.series',
+                                                       func='series_download_subtitles',
+                                                       args=[],
+                                                       kwargs={'no': series_id},
+                                                       is_signalr=is_signalr,
+                                                       is_progress=True)
+                else:
+                    logging.debug(f'BAZARR no missing subtitles for this series: {series_data.title} '
+                                  f'({series_data.year})')
+            else:
+                logging.debug(
+                    f'BAZARR cannot find this series yet (Sonarr may be slow to import episode between disks?). '
+                    f'Searching for missing subtitles is deferred until scheduled task execution for this series'
+                    f': {series_data.title} ({series_data.year})')
+
     logging.debug(f'BAZARR All episodes from series ID {series_id} synced from Sonarr into database.')
 
 
-def sync_one_episode(episode_id, defer_search=False, **kwargs):
+def sync_one_episode(episode_id, defer_search=False, is_signalr=False):
     logging.debug(f'BAZARR syncing this specific episode from Sonarr: {episode_id}')
     apikey_sonarr = settings.sonarr.apikey
 
@@ -258,11 +296,62 @@ def sync_one_episode(episode_id, defer_search=False, **kwargs):
             f'BAZARR searching for missing subtitles is deferred until scheduled task execution for this episode: '
             f'{path_mappings.path_replace(episode["path"])}')
     else:
-        mapped_episode_path = path_mappings.path_replace(episode["path"])
-        if os.path.exists(mapped_episode_path):
-            logging.debug(f'BAZARR downloading missing subtitles for this episode: {mapped_episode_path}')
-            episode_download_subtitles(no=episode_id, job_id=kwargs.get('job_id'), job_sub_function=True)
+        series_title = database.execute(
+            select(TableShows.title)
+            .where(TableShows.sonarrSeriesId == episode["sonarrSeriesId"])
+        ).first()[0]
+        episode_full_title = (f'{series_title} - S{episode["season"]:02d}E{episode["episode"]:02d} - '
+                              f'{episode["title"]}')
+
+        if os.path.exists(path_mappings.path_replace(episode["path"])):
+            logging.debug(f'BAZARR downloading missing subtitles for this episode: {episode_full_title}')
+            if _is_there_missing_subtitles(episode_id=episode_id):
+                jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for episode '
+                                                   f'{episode_full_title}',
+                                                   module='subtitles.mass_download.series',
+                                                   func='episode_download_subtitles',
+                                                   args=[],
+                                                   kwargs={'no': episode_id},
+                                                   is_signalr=is_signalr)
+            else:
+                logging.debug(f'BAZARR no missing subtitles for this episode: {episode_full_title}')
         else:
             logging.debug(f'BAZARR cannot find this file yet (Sonarr may be slow to import episode between disks?). '
                           f'Searching for missing subtitles is deferred until scheduled task execution for this episode'
-                          f': {mapped_episode_path}')
+                          f': {episode_full_title}')
+
+
+def _is_there_missing_subtitles(series_id: int = None, episode_id: int = None) -> bool:
+    """
+    Determines whether there are missing subtitles for a given series or episode.
+
+    This function checks if there are missing subtitles based on the given
+    series ID or episode ID. If both `series_id` and `episode_id` are provided,
+    or if neither is provided, the function returns False. Otherwise, it evaluates
+    the specified conditions to determine if subtitles are missing for the
+    requested series or episode.
+
+    :param series_id: The ID of the series to check for missing subtitles.
+        Optional, defaults to None.
+    :param episode_id: The ID of the episode to check for missing subtitles.
+        Optional, defaults to None.
+    :return: Boolean indicating whether there are missing subtitles (`True`)
+        or not (`False`).
+    :rtype: bool
+    """
+    episodes_conditions = [(TableEpisodes.missing_subtitles.is_not(None)),
+                           (TableEpisodes.missing_subtitles != '[]')]
+    if all([series_id, episode_id]) or not any([series_id, episode_id]):
+        return False
+    elif series_id:
+        episodes_conditions.append(TableEpisodes.sonarrSeriesId == series_id)
+    elif episode_id:
+        episodes_conditions.append(TableEpisodes.sonarrEpisodeId == episode_id)
+    episodes_conditions += get_exclusion_clause('series')
+    missing_episodes = database.execute(
+        select(TableEpisodes.missing_subtitles)
+        .select_from(TableEpisodes)
+        .join(TableShows)
+        .where(reduce(operator.and_, episodes_conditions))) \
+        .all()
+    return len(missing_episodes) > 0
