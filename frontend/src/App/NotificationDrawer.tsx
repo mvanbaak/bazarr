@@ -271,10 +271,11 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                         {job?.job_name}
                                       </Text>
                                       {job?.is_signalr && (
-                                        <FontAwesomeIcon
-                                          title={"Live event initiated"}
-                                          icon={faTowerBroadcast}
-                                        />
+                                        <Tooltip label={"Live event initiated"}>
+                                          <FontAwesomeIcon
+                                            icon={faTowerBroadcast}
+                                          />
+                                        </Tooltip>
                                       )}
                                       <Group gap={4} style={{ flexShrink: 0 }}>
                                         {status === "pending" ? (

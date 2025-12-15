@@ -1,6 +1,6 @@
 import { FunctionComponent, useMemo } from "react";
 import { Link } from "react-router";
-import { Anchor, Badge, Container } from "@mantine/core";
+import { Anchor, Badge, Container, Tooltip } from "@mantine/core";
 import { useDocumentTitle } from "@mantine/hooks";
 import { faBookmark as farBookmark } from "@fortawesome/free-regular-svg-icons";
 import { faBookmark, faWrench } from "@fortawesome/free-solid-svg-icons";
@@ -33,10 +33,11 @@ const MovieView: FunctionComponent = () => {
             original: { monitored },
           },
         }) => (
-          <FontAwesomeIcon
-            title={monitored ? "monitored" : "unmonitored"}
-            icon={monitored ? faBookmark : farBookmark}
-          ></FontAwesomeIcon>
+          <Tooltip
+            label={monitored ? "Monitored in Radarr" : "Unmonitored in Radarr"}
+          >
+            <FontAwesomeIcon icon={monitored ? faBookmark : farBookmark} />
+          </Tooltip>
         ),
       },
       {
