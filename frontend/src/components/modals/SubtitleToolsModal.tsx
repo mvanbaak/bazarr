@@ -154,8 +154,8 @@ const SubtitleToolView: FunctionComponent<SubtitleToolViewProps> = ({
                 // eslint-disable-next-line camelcase
                 raw_language: v,
                 name,
-                hi: toPython(v.forced),
-                forced: toPython(v.hi),
+                hi: toPython(v.hi),
+                forced: toPython(v.forced),
                 isMovie,
               },
             ];
