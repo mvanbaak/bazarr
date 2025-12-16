@@ -34,6 +34,7 @@ import {
   useSeriesById,
   useSeriesModification,
 } from "@/apis/hooks";
+import { useInstanceName } from "@/apis/hooks/site";
 import { DropContent, Toolbox } from "@/components";
 import { QueryOverlay } from "@/components/async";
 import { ItemEditModal } from "@/components/forms/ItemEditForm";
@@ -112,7 +113,9 @@ const SeriesEpisodesView: FunctionComponent = () => {
     [modals, profile, series],
   );
 
-  useDocumentTitle(`${series?.title ?? "Unknown Series"} - Bazarr (Series)`);
+  useDocumentTitle(
+    `${series?.title ?? "Unknown Series"} - ${useInstanceName()} (Series)`,
+  );
 
   const tableRef = useRef<TableInstance<Item.Episode> | null>(null);
 

@@ -63,6 +63,11 @@ const SettingsGeneralView: FunctionComponent = () => {
           }}
         ></Text>
         <Message>Reverse proxy support</Message>
+        <Text
+          label="Instance Name"
+          settingKey="settings-general-instance_name"
+        ></Text>
+        <Message>Have a custom instance name as browser's tab title</Message>
       </Section>
       <Section header="Security">
         <Selector

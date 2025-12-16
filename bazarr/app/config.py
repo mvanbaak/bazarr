@@ -87,6 +87,8 @@ validators = [
     Validator('general.ip', must_exist=True, default='*', is_type_of=str, condition=validate_ip_address),
     Validator('general.port', must_exist=True, default=6767, is_type_of=int, gte=1, lte=65535),
     Validator('general.base_url', must_exist=True, default='', is_type_of=str),
+    Validator('general.instance_name', must_exist=True, default='Bazarr', is_type_of=str,
+              apply_default_on_none=True),
     Validator('general.path_mappings', must_exist=True, default=[], is_type_of=list),
     Validator('general.debug', must_exist=True, default=False, is_type_of=bool),
     Validator('general.branch', must_exist=True, default='master', is_type_of=str,
@@ -703,6 +705,9 @@ def save_settings(settings_items):
 
         if key in ['settings-general-base_url', 'settings-sonarr-base_url', 'settings-radarr-base_url']:
             value = base_url_slash_cleaner(value)
+
+        if key == 'settings-general-instance_name' and value == '':
+            value = None
 
         if key == 'settings-auth-password':
             if value != settings.auth.password and value is not None:

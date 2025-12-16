@@ -46,6 +46,7 @@ declare namespace Settings {
     enabled_providers: string[];
     ignore_pgs_subs: boolean;
     ignore_vobsub_subs: boolean;
+    instance_name: string;
     ip: string;
     multithreading: boolean;
     minimum_score: number;

@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ColumnDef } from "@tanstack/react-table";
 import { uniqueId } from "lodash";
 import { useMovieModification, useMoviesPagination } from "@/apis/hooks";
+import { useInstanceName } from "@/apis/hooks/site";
 import { Action } from "@/components";
 import { AudioList } from "@/components/bazarr";
 import Language from "@/components/bazarr/Language";
@@ -134,7 +135,7 @@ const MovieView: FunctionComponent = () => {
     [modals, modifyMovie],
   );
 
-  useDocumentTitle("Movies - Bazarr");
+  useDocumentTitle(`Movies - ${useInstanceName()}`);
 
   return (
     <Container fluid px={0}>

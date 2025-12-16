@@ -27,6 +27,7 @@ import {
   useMovieById,
   useMovieModification,
 } from "@/apis/hooks/movies";
+import { useInstanceName } from "@/apis/hooks/site";
 import { Action, DropContent, Toolbox } from "@/components";
 import { QueryOverlay } from "@/components/async";
 import { ItemEditModal } from "@/components/forms/ItemEditForm";
@@ -103,7 +104,9 @@ const MovieDetailView: FunctionComponent = () => {
 
   const hasTask = useIsMovieActionRunning();
 
-  useDocumentTitle(`${movie?.title ?? "Unknown Movie"} - Bazarr (Movies)`);
+  useDocumentTitle(
+    `${movie?.title ?? "Unknown Movie"} - ${useInstanceName()} (Movies)`,
+  );
 
   const openDropzone = useRef<VoidFunction>(null);
 
