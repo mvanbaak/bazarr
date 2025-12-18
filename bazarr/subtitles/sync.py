@@ -30,7 +30,7 @@ def sync_subtitles(video_path,
         return False
 
     if not job_id:
-        jobs_queue.add_job_from_function("Syncing Subtitle", is_progress=True)
+        jobs_queue.add_job_from_function("Subtitles synchronization", is_progress=True)
         return False
 
     if job_sub_function:
@@ -79,14 +79,15 @@ def sync_subtitles(video_path,
                                   f'subtitle file: {srt_path}')
                 return False
             else:
-                jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
                 return True
             finally:
+                jobs_queue.update_job_progress(job_id=job_id, progress_value="max",
+                                               progress_message=f"Synced {srt_path}")
                 del subsync
                 gc.collect()
         else:
             logging.debug(f"BAZARR subsync skipped because subtitles score isn't below this "
                           f"threshold value: {subsync_threshold}%")
 
-    jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
+    jobs_queue.update_job_progress(job_id=job_id, progress_value="max", progress_message=f"Synced {srt_path}")
     return False

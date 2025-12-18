@@ -18,7 +18,7 @@ from app.config import settings
 from app.get_args import args
 from sonarr.info import get_sonarr_info
 from radarr.info import get_radarr_info
-from .jobs_queue import jobs_queue
+from app.jobs_queue import jobs_queue
 
 
 def upcoming_deprecated_python_version():
@@ -51,7 +51,7 @@ def parse_announcement_dict(announcement_dict):
 
 def get_announcements_to_file(job_id=None, startup=False):
     if not startup and not job_id:
-        jobs_queue.add_job_from_function("Update Announcements File", is_progress=False)
+        jobs_queue.add_job_from_function("Updating Announcements File", is_progress=False)
         return
 
     try:
@@ -70,6 +70,9 @@ def get_announcements_to_file(job_id=None, startup=False):
     else:
         with open(os.path.join(args.config_dir, 'config', 'announcements.json'), 'wb') as f:
             f.write(r.content)
+    finally:
+        if not startup:
+            jobs_queue.update_job_name(job_id=job_id, new_job_name="Updated Announcements File")
 
 
 def get_online_announcements():

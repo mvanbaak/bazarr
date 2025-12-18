@@ -176,6 +176,7 @@ def update_series(job_id=None):
         if sync_monitored:
             trace(f"skipped {skipped_count} unmonitored series out of {i}")
         logging.debug('BAZARR All series synced from Sonarr into database.')
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Synced series with Sonarr")
 
 
 def update_one_series(series_id, action, is_signalr=False):

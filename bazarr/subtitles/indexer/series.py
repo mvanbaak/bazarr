@@ -284,7 +284,7 @@ def list_missing_subtitles(no=None, epno=None):
 
 def series_full_scan_subtitles(job_id=None, use_cache=None):
     if not job_id:
-        jobs_queue.add_job_from_function("Full disk scan for episodes subtitles", is_progress=True)
+        jobs_queue.add_job_from_function("Indexing all existing episodes subtitles", is_progress=True)
         return
 
     if use_cache is None:
@@ -304,6 +304,8 @@ def series_full_scan_subtitles(job_id=None, use_cache=None):
         store_subtitles(episode.path, path_mappings.path_replace(episode.path), use_cache=use_cache)
 
     logging.info('BAZARR All existing episode subtitles indexed from disk.')
+
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Indexed all existing series subtitles")
 
     gc.collect()
 

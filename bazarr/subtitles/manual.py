@@ -230,6 +230,9 @@ def episode_manually_download_specific_subtitle(sonarr_series_id, sonarr_episode
             TableEpisodes.audio_language,
             TableEpisodes.path,
             TableEpisodes.sceneName,
+            TableEpisodes.season,
+            TableEpisodes.episode,
+            TableEpisodes.title.label('episodeTitle'),
             TableShows.title)
         .select_from(TableEpisodes)
         .join(TableShows)
@@ -240,6 +243,9 @@ def episode_manually_download_specific_subtitle(sonarr_series_id, sonarr_episode
         return 'Episode not found', 404
 
     title = episodeInfo.title
+    jobs_queue.update_job_name(job_id=job_id, new_job_name=f"Manually downloading Subtitles for {title} - "
+                                                           f"S{episodeInfo.season:02d}E{episodeInfo.episode:02d} - "
+                                                           f"{episodeInfo.episodeTitle}")
     episodePath = path_mappings.path_replace(episodeInfo.path)
     sceneName = episodeInfo.sceneName or "None"
 
@@ -266,15 +272,20 @@ def episode_manually_download_specific_subtitle(sonarr_series_id, sonarr_episode
                 send_notifications(sonarr_series_id, sonarr_episode_id, result.message)
             store_subtitles(result.path, episodePath)
             return '', 204
+    finally:
+        jobs_queue.update_job_name(job_id=job_id, new_job_name="Manually downloaded Subtitles for {title} - "
+                                                               f"S{episodeInfo.season:02d}E{episodeInfo.episode:02d} - "
+                                                               f"{episodeInfo.episodeTitle}")
 
 
 def movie_manually_download_specific_subtitle(radarr_id, hi, forced, use_original_format, selected_provider, subtitle,
                                               job_id=None):
     if not job_id:
-        return jobs_queue.add_job_from_function("Manually downloading Subtitles",is_progress=False)
+        return jobs_queue.add_job_from_function("Manually downloading Subtitles", is_progress=False)
 
     movieInfo = database.execute(
         select(TableMovies.title,
+               TableMovies.year,
                TableMovies.path,
                TableMovies.sceneName,
                TableMovies.audio_language)
@@ -285,6 +296,8 @@ def movie_manually_download_specific_subtitle(radarr_id, hi, forced, use_origina
         return 'Movie not found', 404
 
     title = movieInfo.title
+    jobs_queue.update_job_name(job_id=job_id, new_job_name=f"Manually downloading Subtitles for {title} "
+                                                           f"({movieInfo.year})")
     moviePath = path_mappings.path_replace_movie(movieInfo.path)
     sceneName = movieInfo.sceneName or "None"
 
@@ -311,6 +324,9 @@ def movie_manually_download_specific_subtitle(radarr_id, hi, forced, use_origina
                 send_notifications_movie(radarr_id, result.message)
             store_subtitles_movie(result.path, moviePath)
             return '', 204
+    finally:
+        jobs_queue.update_job_name(job_id=job_id, new_job_name=f"Manually downloaded Subtitles for {title} "
+                                                               f"({movieInfo.year})")
 
 
 def _get_language_obj(profile_id):

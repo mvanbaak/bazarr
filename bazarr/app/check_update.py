@@ -11,9 +11,9 @@ import sys
 from shutil import rmtree
 from zipfile import ZipFile
 
-from .get_args import args
-from .config import settings
-from .jobs_queue import jobs_queue
+from app.jobs_queue import jobs_queue
+from app.get_args import args
+from app.config import settings
 
 
 def deprecated_python_version():
@@ -24,7 +24,7 @@ def deprecated_python_version():
 def check_releases(job_id=None, startup=False):
     # startup is used to prevent trying to create a job before the jobs queue is initialized
     if not startup and not job_id:
-        jobs_queue.add_job_from_function("Update Release Info", is_progress=False)
+        jobs_queue.add_job_from_function("Updating Release Info", is_progress=False)
         return
 
     releases = []
@@ -57,6 +57,9 @@ def check_releases(job_id=None, startup=False):
         with open(os.path.join(args.config_dir, 'config', 'releases.txt'), 'w') as f:
             json.dump(releases, f)
         logging.debug(f'BAZARR saved {len(r.json())} releases to releases.txt')
+    finally:
+        if not startup:
+            jobs_queue.update_job_name(job_id=job_id, new_job_name="Updated Release Info")
 
 
 def check_if_new_update():

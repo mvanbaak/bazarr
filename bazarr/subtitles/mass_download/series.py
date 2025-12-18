@@ -71,6 +71,8 @@ def series_download_subtitles(no, job_id=None, job_sub_function=False):
             logging.info("BAZARR All providers are throttled")
             break
 
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched missing subtitles")
+
 
 def episode_download_subtitles(no, job_id=None, job_sub_function=False, providers_list=None):
     if not job_sub_function and not job_id:
@@ -163,6 +165,7 @@ def episode_download_subtitles(no, job_id=None, job_sub_function=False, provider
 
     if not job_sub_function and job_id:
         jobs_queue.update_job_progress(job_id=job_id, progress_value='max')
+        jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched missing subtitles")
 
 
 def episode_download_specific_subtitles(sonarr_series_id, sonarr_episode_id, language, hi, forced, job_id=None):
@@ -232,5 +235,7 @@ def episode_download_specific_subtitles(sonarr_series_id, sonarr_episode_id, lan
     except OSError:
         return 'Unable to save subtitles file. Permission or path mapping issue?', 409
     else:
-        jobs_queue.update_job_progress(job_id=job_id, progress_value='max')
+        jobs_queue.update_job_progress(job_id=job_id, progress_value='max',
+                                       progress_message=f"Searching {language_str.upper()} for {episode_long_title}")
+        jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched subtitles")
         return '', 204

@@ -129,4 +129,5 @@ def wanted_search_missing_subtitles_movies(job_id=None):
             logging.info("BAZARR All providers are throttled")
             break
 
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched for missing movies subtitles")
     logging.info('BAZARR Finished searching for missing Movies Subtitles. Check History for more information.')

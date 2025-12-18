@@ -48,7 +48,7 @@ def get_backup_files(fullpath=True):
 
 def backup_to_zip(job_id=None):
     if not job_id:
-        jobs_queue.add_job_from_function("Backup Database and Configuration File", is_progress=False)
+        jobs_queue.add_job_from_function("Backing up Database and Configuration File", is_progress=False)
         return
 
     now = datetime.now()
@@ -90,6 +90,8 @@ def backup_to_zip(job_id=None):
         else:
             logging.debug('Database file is not included in backup. See previous exception')
         backupZip.write(config_file, 'config.yaml')
+
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Backed up Database and Configuration File")
 
 
 def restore_from_backup():

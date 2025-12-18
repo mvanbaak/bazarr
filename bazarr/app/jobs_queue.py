@@ -197,6 +197,26 @@ class JobsQueue:
         else:
             return "Unknown job"
 
+    def update_job_name(self, job_id: int, new_job_name: str) -> bool:
+        """
+        Updates the name of a job present in one of the job queues. The job is searched by its unique 
+        identifier (`job_id`) in all available queues, and if found, the job's name is updated to 
+        `new_job_name`. After updating, it triggers an event to notify the frontend about the job update.
+
+        :param job_id: The unique identifier of the job to be updated.
+        :param new_job_name: The new name to assign to the job.
+        :return: A boolean indicating whether the job name was successfully updated (True) or the job 
+                 was not found in any of the queues (False).
+        """
+        queues = self.jobs_pending_queue + self.jobs_running_queue + self.jobs_failed_queue + self.jobs_completed_queue
+        
+        for job in queues:
+            if job.job_id == job_id:
+                job.job_name = new_job_name
+                event_stream(type='jobs', action='update', payload={"job_id": job.job_id})
+                return True
+        return False
+
     def get_job_returned_value(self, job_id: int):
         """
         Fetches the returned value of a job from the queue provided its unique identifier.

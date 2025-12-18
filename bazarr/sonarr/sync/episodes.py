@@ -193,14 +193,17 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
                 logging.debug(f'BAZARR downloading missing subtitles for this series: {series_data.title} '
                               f'({series_data.year})')
                 if _is_there_missing_subtitles(series_id=series_id):
-                    jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles episodes for series '
-                                                       f'{series_data.title} ({series_data.year})',
-                                                       module='subtitles.mass_download.series',
-                                                       func='series_download_subtitles',
-                                                       args=[],
-                                                       kwargs={'no': series_id},
-                                                       is_signalr=is_signalr,
-                                                       is_progress=True)
+                    job_id = jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles episodes for series '
+                                                                         f'{series_data.title} ({series_data.year})',
+                                                                module='subtitles.mass_download.series',
+                                                                func='series_download_subtitles',
+                                                                args=[],
+                                                                kwargs={'no': series_id},
+                                                                is_signalr=is_signalr,
+                                                                is_progress=True)
+                    jobs_queue.update_job_name(job_id=job_id, new_job_name=f'Downloaded missing subtitles episodes for '
+                                                                           f'series {series_data.title} '
+                                                                           f'({series_data.year})')
                 else:
                     logging.debug(f'BAZARR no missing subtitles for this series: {series_data.title} '
                                   f'({series_data.year})')
@@ -306,13 +309,15 @@ def sync_one_episode(episode_id, defer_search=False, is_signalr=False):
         if os.path.exists(path_mappings.path_replace(episode["path"])):
             logging.debug(f'BAZARR downloading missing subtitles for this episode: {episode_full_title}')
             if _is_there_missing_subtitles(episode_id=episode_id):
-                jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for episode '
-                                                   f'{episode_full_title}',
-                                                   module='subtitles.mass_download.series',
-                                                   func='episode_download_subtitles',
-                                                   args=[],
-                                                   kwargs={'no': episode_id},
-                                                   is_signalr=is_signalr)
+                job_id = jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for episode '
+                                                                     f'{episode_full_title}',
+                                                            module='subtitles.mass_download.series',
+                                                            func='episode_download_subtitles',
+                                                            args=[],
+                                                            kwargs={'no': episode_id},
+                                                            is_signalr=is_signalr)
+                jobs_queue.update_job_name(job_id=job_id, new_job_name=f'Downloaded missing subtitles for episode '
+                                                                       f'{episode_full_title}')
             else:
                 logging.debug(f'BAZARR no missing subtitles for this episode: {episode_full_title}')
         else:

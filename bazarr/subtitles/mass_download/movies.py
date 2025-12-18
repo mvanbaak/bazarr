@@ -105,6 +105,7 @@ def movies_download_subtitles(no, job_id=None, job_sub_function=False):
         logging.info("BAZARR All providers are throttled")
 
     jobs_queue.update_job_progress(job_id=job_id, progress_value="max")
+    jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched missing subtitles")
 
 
 def movie_download_specific_subtitles(radarr_id, language, hi, forced, job_id=None):
@@ -166,5 +167,7 @@ def movie_download_specific_subtitles(radarr_id, language, hi, forced, job_id=No
     except OSError:
         return 'Unable to save subtitles file. Permission or path mapping issue?', 409
     else:
-        jobs_queue.update_job_progress(job_id=job_id, progress_value='max')
+        jobs_queue.update_job_progress(job_id=job_id, progress_value='max',
+                                       progress_message=f"Searched {language_str.upper()} for {title}")
+        jobs_queue.update_job_name(job_id=job_id, new_job_name="Searched subtitles")
         return '', 204

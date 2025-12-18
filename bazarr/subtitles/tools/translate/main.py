@@ -63,3 +63,8 @@ def translate_subtitles_file(video_path, source_srt_file, from_lang, to_lang, fo
     except Exception as e:
         logging.error(f'Translation failed: {str(e)}', exc_info=True)
         return False
+
+    finally:
+        jobs_queue.update_job_name(job_id=job_id,
+                                   name=f'Translated from {from_lang.upper()} to {to_lang.upper()} using '
+                                        f'{settings.translator.translator_type.replace("_", " ").title()}')

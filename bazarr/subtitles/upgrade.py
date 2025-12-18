@@ -38,7 +38,7 @@ def upgrade_subtitles():
 
 def upgrade_episodes_subtitles(job_id=None):
     if not job_id:
-        jobs_queue.add_job_from_function("Upgrading episodes subtitles", is_progress=True)
+        jobs_queue.add_job_from_function("Trying to upgrade episodes subtitles", is_progress=True)
         return
 
     episodes_to_upgrade = get_upgradable_episode_subtitles()
@@ -148,11 +148,12 @@ def upgrade_episodes_subtitles(job_id=None):
             history_log(3, episode['sonarrSeriesId'], episode['sonarrEpisodeId'], result,
                         upgraded_from_id=episode['original_id'])
             send_notifications(episode['sonarrSeriesId'], episode['sonarrEpisodeId'], result.message)
+    jobs_queue.update_job_name(job_id=job_id, new_job_name='Tried to upgrade episodes subtitles')
 
 
 def upgrade_movies_subtitles(job_id=None):
     if not job_id:
-        jobs_queue.add_job_from_function("Upgrading movies subtitles", is_progress=True)
+        jobs_queue.add_job_from_function("Trying to upgrade movies subtitles", is_progress=True)
         return
 
     movies_to_upgrade = get_upgradable_movies_subtitles()
@@ -250,6 +251,7 @@ def upgrade_movies_subtitles(job_id=None):
                                   path_mappings.path_replace_movie(movie['video_path']))
             history_log_movie(3, movie['radarrId'], result, upgraded_from_id=movie['original_id'])
             send_notifications_movie(movie['radarrId'], result.message)
+    jobs_queue.update_job_name(job_id=job_id, new_job_name='Tried to upgrade movies subtitles')
 
 
 def get_queries_condition_parameters():
