@@ -63,11 +63,11 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
                                                   TableEpisodes.path,
                                                   TableEpisodes.sonarrSeriesId)
                                            .where(TableEpisodes.sonarrSeriesId == series_id)).all()]
-        current_episodes_db_kv = [x.items() for x in [y._asdict()['TableEpisodes'].__dict__ for y in
-                                                      database.execute(
-                                                          select(TableEpisodes)
-                                                          .where(TableEpisodes.sonarrSeriesId == series_id))
-                                                      .all()]]
+        current_episodes_in_db_row_as_dict = {row[0].sonarrEpisodeId: row[0].to_dict() for row in
+                                              database.execute(
+                                                  select(TableEpisodes)
+                                                  .where(TableEpisodes.sonarrSeriesId == series_id))
+                                              .all()}
     else:
         return
 
@@ -79,7 +79,9 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
     episodes = get_episodes_from_sonarr_api(apikey_sonarr=apikey_sonarr, series_id=series_id)
     if episodes:
         # For Sonarr v3, we need to update episodes to integrate the episodeFile API endpoint results
-        if not get_sonarr_info.is_legacy():
+        # We skip this if the episodes already contain an episodeFile structure (added with Sonarr v4.0.9.2421)
+        if (not get_sonarr_info.is_legacy() and
+                any([episode.get('hasFile') and not episode.get('episodeFileId') for episode in episodes])):
             episodeFiles = get_episodesFiles_from_sonarr_api(apikey_sonarr=apikey_sonarr, series_id=series_id)
             for episode in episodes:
                 if episodeFiles and episode['hasFile']:
@@ -119,9 +121,9 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
                     current_episodes_sonarr.append(episode['id'])
 
                     # Parse episode data
-                    if episode['id'] in current_episodes_id_db_list:
+                    if episode['id'] in current_episodes_in_db_row_as_dict:
                         parsed_episode = episodeParser(episode)
-                        if not any([parsed_episode.items() <= x for x in current_episodes_db_kv]):
+                        if not set(parsed_episode.items()).issubset(set(current_episodes_in_db_row_as_dict[episode['id']].items())):
                             episodes_to_update.append(parsed_episode)
                     else:
                         episodes_to_add.append(episodeParser(episode))

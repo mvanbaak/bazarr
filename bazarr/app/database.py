@@ -175,6 +175,9 @@ class TableEpisodes(Base):
     updated_at_timestamp = mapped_column(DateTime)
     video_codec = mapped_column(Text)
 
+    def to_dict(self):
+        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
+
 
 class TableHistory(Base):
     __tablename__ = 'table_history'
