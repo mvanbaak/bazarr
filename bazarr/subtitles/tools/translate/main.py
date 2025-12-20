@@ -66,5 +66,5 @@ def translate_subtitles_file(video_path, source_srt_file, from_lang, to_lang, fo
 
     finally:
         jobs_queue.update_job_name(job_id=job_id,
-                                   name=f'Translated from {from_lang.upper()} to {to_lang.upper()} using '
-                                        f'{settings.translator.translator_type.replace("_", " ").title()}')
+                                   new_job_name=f'Translated from {from_lang.upper()} to {to_lang.upper()} using '
+                                                f'{settings.translator.translator_type.replace("_", " ").title()}')
