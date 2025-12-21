@@ -74,7 +74,7 @@ class SonarrSignalrClientLegacy:
                     self.connected = True
                     event_stream(type='badges')
                     logging.info('BAZARR SignalR client for Sonarr is connected and waiting for events.')
-                    if not args.dev:
+                    if settings.sonarr.series_sync_on_live:
                         scheduler.execute_job_now(taskid="update_series")
 
     def stop(self, log=True):
@@ -150,7 +150,7 @@ class SonarrSignalrClient:
         self.connected = True
         event_stream(type='badges')
         logging.info('BAZARR SignalR client for Sonarr is connected and waiting for events.')
-        if not args.dev:
+        if settings.sonarr.series_sync_on_live:
             scheduler.execute_job_now(taskid="update_series")
 
     def on_reconnect_handler(self):
@@ -217,7 +217,7 @@ class RadarrSignalrClient:
         self.connected = True
         event_stream(type='badges')
         logging.info('BAZARR SignalR client for Radarr is connected and waiting for events.')
-        if not args.dev:
+        if settings.radarr.movies_sync_on_live:
             scheduler.execute_job_now(taskid="update_movies")
 
     def on_reconnect_handler(self):
