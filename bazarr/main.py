@@ -6,11 +6,16 @@ from threading import Thread
 
 bazarr_version = 'unknown'
 
+# Try to read version from VERSION file (authoritative for releases)
 version_file = os.path.join(os.path.dirname(__file__), '..', 'VERSION')
 if os.path.isfile(version_file):
     with open(version_file, 'r') as f:
         bazarr_version = f.readline()
         bazarr_version = bazarr_version.rstrip('\n')
+
+# Fall back to environment variable if VERSION file not found (dev/Docker setups)
+if bazarr_version == 'unknown' and "BAZARR_VERSION" in os.environ:
+    bazarr_version = os.environ["BAZARR_VERSION"]
 
 os.environ["BAZARR_VERSION"] = bazarr_version.lstrip('v')
 
