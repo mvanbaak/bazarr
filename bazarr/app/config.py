@@ -720,7 +720,7 @@ def save_settings(settings_items):
             configure_debug = True
 
         if key == 'settings-general-hi_extension':
-            os.environ["SZ_HI_EXTENSION"] = str(value)
+            os.environ["SZ_HI_EXTENSION"] = value or ""
 
         if key in ['settings-general-anti_captcha_provider', 'settings-anticaptcha-anti_captcha_key',
                    'settings-deathbycaptcha-username', 'settings-deathbycaptcha-password']:
