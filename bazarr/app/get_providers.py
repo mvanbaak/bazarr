@@ -134,6 +134,9 @@ def provider_throttle_map():
             ForbiddenError: (datetime.timedelta(minutes=15), "15 minutes"),
             TooManyRequests: (datetime.timedelta(hours=1), "1 hour"),
         },
+        "subdl": {
+            ProviderError: (datetime.timedelta(hours=1), "1 hour"),
+        }
     }
 
 
