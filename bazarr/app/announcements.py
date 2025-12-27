@@ -56,7 +56,7 @@ def get_announcements_to_file(job_id=None, startup=False):
 
     try:
         r = requests.get(
-            url="https://cdn.statically.io/gh/morpheus65535/bazarr-binaries/refs/heads/master/announcements.json",
+            url="https://cdn.statically.io/gh/morpheus65535/bazarr-binaries@refs/heads/master/announcements.json",
             timeout=30
         )
     except requests.exceptions.HTTPError:
