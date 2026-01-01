@@ -329,15 +329,13 @@ def update_one_movie(movie_id, action, defer_search=False, is_signalr=False):
         if os.path.exists(path_mappings.path_replace_movie(movie["path"])):
             logging.debug(f'BAZARR downloading missing subtitles for this movie: {movie["title"]} ({movie["year"]})')
             if _is_there_missing_subtitles(radarr_id=movie_id):
-                job_id = jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for movie '
-                                                                     f'{movie["title"]} ({movie["year"]})',
-                                                            module='subtitles.mass_download.movies',
-                                                            func='movies_download_subtitles',
-                                                            args=[],
-                                                            kwargs={'no': movie_id},
-                                                            is_signalr=is_signalr)
-                jobs_queue.update_job_name(job_id=job_id, new_job_name=f'Downloaded missing subtitles for movie '
-                                                                       f'{movie["title"]} ({movie["year"]})')
+                jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for {movie["title"]} '
+                                                            f'({movie["year"]})',
+                                                   module='subtitles.mass_download.movies',
+                                                   func='movies_download_subtitles',
+                                                   args=[],
+                                                   kwargs={'no': movie_id},
+                                                   is_signalr=is_signalr)
             else:
                 logging.debug(f'BAZARR no missing subtitles for this movie: {movie["title"]} ({movie["year"]})')
         else:
