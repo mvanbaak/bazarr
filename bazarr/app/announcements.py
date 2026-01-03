@@ -59,14 +59,16 @@ def get_announcements_to_file(job_id=None, startup=False):
             url="https://cdn.statically.io/gh/morpheus65535/bazarr-binaries@refs/heads/master/announcements.json",
             timeout=30
         )
-    except requests.exceptions.HTTPError:
-        logging.exception("Error trying to get announcements from Github. Http error.")
-    except requests.exceptions.ConnectionError:
-        logging.exception("Error trying to get announcements from Github. Connection Error.")
-    except requests.exceptions.Timeout:
-        logging.exception("Error trying to get announcements from Github. Timeout Error.")
-    except requests.exceptions.RequestException:
-        logging.exception("Error trying to get announcements from Github.")
+    except Exception:
+        try:
+            logging.exception("Error trying to get announcements from Statically, falling back to Github.")
+            r = requests.get(
+                url="https://raw.githubusercontent.com/morpheus65535/bazarr-binaries/refs/heads/master/announcements.json",
+                timeout=30
+            )
+        except Exception:
+            logging.exception("Error trying to get announcements from Github.")
+            return
     else:
         with open(os.path.join(args.config_dir, 'config', 'announcements.json'), 'wb') as f:
             f.write(r.content)
