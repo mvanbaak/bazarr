@@ -344,7 +344,6 @@ class WhisperAIProvider(Provider):
         try:
             # This launches a subprocess to decode audio while down-mixing and resampling as necessary.
             inp = ffmpeg.input(path, threads=0)
-            out = inp.output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=16000, af="aresample=async=1")
             if audio_stream_language:
                 # There is more than one audio stream, so pick the requested one by name
                 # Use the ISO 639-2 code if available
@@ -354,7 +353,10 @@ class WhisperAIProvider(Provider):
                 # otherwise ffmpeg will try to combine multiple streams, but our output format doesn't support that.
                 # The first stream is probably the correct one, as later streams are usually commentaries
                 lang_map = f"0:m:language:{audio_stream_language}"
-                out = out.global_args("-map", lang_map)
+                out = inp.output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=16000, af="aresample=async=1",
+                                 map=lang_map)
+            else:
+                out = inp.output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=16000, af="aresample=async=1")
 
             start_time = time.time()
             out, _ = out.run(cmd=[ffmpeg_path, "-nostdin"], capture_stdout=True, capture_stderr=True) 
