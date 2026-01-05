@@ -10,7 +10,6 @@ import threading
 import time
 from datetime import datetime
 
-import random
 import configparser
 import yaml
 
@@ -504,6 +503,9 @@ elif not os.path.exists(config_yaml_file):
         os.makedirs(os.path.dirname(config_yaml_file))
     open(config_yaml_file, mode='w').close()
 
+if os.path.exists(config_yaml_file):
+    os.environ['BAZARR_CONFIGURED'] = '1'
+
 settings = Dynaconf(
     settings_file=config_yaml_file,
     core_loaders=['YAML'],
@@ -886,6 +888,12 @@ def save_settings(settings_items):
         raise
     else:
         write_config()
+
+        # Set the configured state based on config.yaml file existence
+        from .database import database, update, System
+        database.execute(
+            update(System)
+            .values(configured=1))
 
         # Reconfigure Bazarr to reflect changes
         if configure_debug:
