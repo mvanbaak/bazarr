@@ -191,25 +191,25 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
                 f'BAZARR searching for missing subtitles is deferred until scheduled task execution for this series: '
                 f'{series_data.title} ({series_data.year})')
         else:
-            if os.path.exists(path_mappings.path_replace(series_data.path)):
-                logging.debug(f'BAZARR downloading missing subtitles for this series: {series_data.title} '
-                              f'({series_data.year})')
-                if _is_there_missing_subtitles(series_id=series_id):
-                    jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for {series_data.title}',
-                                                       module='subtitles.mass_download.series',
-                                                       func='series_download_subtitles',
-                                                       args=[],
-                                                       kwargs={'no': series_id},
-                                                       is_signalr=is_signalr,
-                                                       is_progress=True)
+            for episode in episodes_to_update + episodes_to_add:
+                episode_title = (f'{series_data.title} - S{episode["season"]:02d}E{episode["episode"]:02d} '
+                                 f'- {episode["title"]}')
+                if _is_there_missing_subtitles(episode_id=episode['sonarrEpisodeId']):
+                    if os.path.exists(path_mappings.path_replace(episode['path'])):
+                        logging.debug(f'BAZARR downloading missing subtitles for this episode: {episode_title}')
+                        jobs_queue.feed_jobs_pending_queue(job_name=f'Downloading missing subtitles for '
+                                                                    f'{episode_title}',
+                                                           module='subtitles.mass_download.series',
+                                                           func='episode_download_subtitles',
+                                                           args=[],
+                                                           kwargs={'no': episode['sonarrEpisodeId']},
+                                                           is_signalr=is_signalr)
+                    else:
+                        logging.debug(f'BAZARR cannot find this episode file yet (Sonarr may be slow to import episode '
+                                      f'between disks?). Searching for missing subtitles is deferred until scheduled '
+                                      f'task execution for this episode: {episode_title}')
                 else:
-                    logging.debug(f'BAZARR no missing subtitles for this series: {series_data.title} '
-                                  f'({series_data.year})')
-            else:
-                logging.debug(
-                    f'BAZARR cannot find this series yet (Sonarr may be slow to import episode between disks?). '
-                    f'Searching for missing subtitles is deferred until scheduled task execution for this series'
-                    f': {series_data.title} ({series_data.year})')
+                    logging.debug(f'BAZARR no missing subtitles for this episode: {episode_title}')
 
     logging.debug(f'BAZARR All episodes from series ID {series_id} synced from Sonarr into database.')
 
