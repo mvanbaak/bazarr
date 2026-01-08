@@ -515,6 +515,12 @@ export const ProviderList: Readonly<ProviderInfo[]> = [
   },
   { key: "subsynchro", description: "French Subtitles Provider" },
   {
+    key: "subtis",
+    name: "Subtis",
+    description: "Spanish Subtitles Provider for Movies",
+    message: "No configuration required. Spanish subtitles only.",
+  },
+  {
     key: "subtitrarinoi",
     name: "Subtitrari-noi.ro",
     description: "Romanian Subtitles Provider",
