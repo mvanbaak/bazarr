@@ -39,7 +39,7 @@ class SubsourceConverter(LanguageReverseConverter):
                                'Chinese BG code': ('zho',),  # all Chinese subtitles seem to be uploaded using this language name
                                # 'Chinese Bilingual': ('',),
                                'Croatian': ('hrv',),
-                               'Czech': ('ces',),
+                               'Czech': ('cze',),
                                'Danish': ('dan',),
                                # 'Dari': ('',),  # no alpha_2 so unsupported by Bazarr
                                'Dutch': ('nld',),
@@ -53,13 +53,13 @@ class SubsourceConverter(LanguageReverseConverter):
                                'Gaelic': ('gla',),
                                # 'Gaelician': ('',),  # unknown language in pycountry.languages
                                'Georgian': ('kat',),
-                               'German': ('deu',),
-                               'Greek': ('ell',),
+                               'German': ('ger',),
+                               'Greek': ('gre',),
                                # 'Greenlandic': ('',),  # unknown language in pycountry.languages
                                'Hebrew': ('heb',),
                                'Hindi': ('hin',),
                                'Hungarian': ('hun',),
-                               'Icelandic': ('isl',),
+                               'Icelandic': ('ice',),
                                'Igbo': ('ibo',),
                                'Indonesian': ('ind',),
                                'Interlingua': ('ina',),
@@ -92,7 +92,7 @@ class SubsourceConverter(LanguageReverseConverter):
                                'Polish': ('pol',),
                                'Portuguese': ('por',),
                                'Pushto': ('pus',),
-                               'Romanian': ('ron',),
+                               'Romanian': ('rum',),
                                'Russian': ('rus',),
                                # 'Santli': ('',),  # unknown language in pycountry.languages
                                'Serbian': ('srp',),
