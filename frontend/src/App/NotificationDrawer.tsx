@@ -193,10 +193,6 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                 withBorder
                                 radius="md"
                                 padding="xs"
-                                style={{
-                                  backgroundColor:
-                                    "var(--mantine-color-dark-6)",
-                                }}
                               >
                                 <Group
                                   gap="xs"
