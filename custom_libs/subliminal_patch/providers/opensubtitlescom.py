@@ -137,10 +137,12 @@ class OpenSubtitlesComSubtitle(Subtitle):
             matches.add('year')
 
         # release_group
-        if (video.release_group and self.releases and
-                any(r in sanitize_release_group(self.releases)
-                    for r in get_equivalent_release_groups(sanitize_release_group(video.release_group)))):
-            matches.add('release_group')
+        if video.release_group and self.releases:
+            video_release = get_equivalent_release_groups(sanitize_release_group(video.release_group))
+            guessed_subtitles_release = guessit(self.releases, options={'type': type_})
+            subtitles_release = get_equivalent_release_groups(sanitize_release_group(guessed_subtitles_release.get('release_group', '')))
+            if subtitles_release == video_release:
+                matches.add('release_group')
 
         if self.hash_matched:
             matches.add('hash')
