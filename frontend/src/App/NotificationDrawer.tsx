@@ -306,14 +306,13 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                             </Menu.Dropdown>
                                           </Menu>
                                         ) : (
-                                          <Text size="xs" c="dimmed">
-                                            <TimeAgo
-                                              date={
-                                                job?.last_run_time || new Date()
-                                              }
-                                              minPeriod={5}
-                                            />
-                                          </Text>
+                                          <TimeAgo
+                                            key={job?.job_id}
+                                            date={
+                                              job?.last_run_time || new Date()
+                                            }
+                                            minPeriod={5}
+                                          />
                                         )}
                                       </Group>
                                     </Group>
