@@ -8,6 +8,7 @@ from requests import Session
 from bs4 import BeautifulSoup
 from subliminal_patch.subtitle import Subtitle
 from subliminal_patch.providers import Provider
+from subliminal_patch.subtitle import guess_matches
 from subliminal.subtitle import fix_line_ending
 from subliminal.utils import sanitize
 from subliminal.video import Episode, Movie
@@ -149,7 +150,8 @@ class AnimesubinfoSubtitle(Subtitle):
                 matches.add('season')
 
             # Episode match
-            if video.episode and self.episode == video.episode:
+            if (video.absolute_episode and self.episode == video.absolute_episode) or \
+                    (video.episode and self.episode == video.episode):
                 matches.add('episode')
 
             # Release group match
@@ -179,6 +181,9 @@ class AnimesubinfoSubtitle(Subtitle):
         # Format preference - Advanced SSA/ASS is better quality
         if self.format_type and 'Advanced SSA' in self.format_type:
             matches.add('audio_codec')  # Repurpose for format priority
+
+        # Other properties matching from release info
+        matches |= guess_matches(video, guessit(self.release_info, {"type": video_type}))
 
         logger.debug(f'Subtitle {self.subtitle_id} matches: {matches}')
         return matches
@@ -356,7 +361,9 @@ class AnimesubinfoProvider(Provider):
         if isinstance(video, Episode):
             search_title = video.series
             # For episodes, use pattern like "Kimetsu no Yaiba ep01"
-            if video.episode:
+            if video.absolute_episode:
+                search_title_with_ep = f'{search_title} ep{video.absolute_episode}'
+            elif video.episode:
                 search_title_with_ep = f'{search_title} ep{video.episode:02d}'
             else:
                 search_title_with_ep = None
@@ -385,7 +392,9 @@ class AnimesubinfoProvider(Provider):
         # Strategy 3: Try alternative titles if available
         if isinstance(video, Episode) and video.alternative_series:
             for alt_series in video.alternative_series[:2]:  # Limit to first 2 alternatives
-                if video.episode:
+                if video.absolute_episode:
+                    search_strategies.append(('en', f'{alt_series} ep{video.absolute_episode}'))
+                elif video.episode:
                     search_strategies.append(('en', f'{alt_series} ep{video.episode:02d}'))
                 search_strategies.append(('en', alt_series))
         elif isinstance(video, Movie) and video.alternative_titles:
