@@ -317,7 +317,7 @@ const NotificationDrawer: FunctionComponent<NotificationDrawerProps> = ({
                                       </Group>
                                     </Group>
                                     {job?.progress_message && (
-                                      <Text size="xs" c="dimmed" lineClamp={1}>
+                                      <Text size="xs" c="dimmed">
                                         {job.progress_message}
                                       </Text>
                                     )}
