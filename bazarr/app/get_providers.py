@@ -268,6 +268,7 @@ def get_providers_auth():
                              'password': settings.opensubtitlescom.password,
                              'use_hash': settings.opensubtitlescom.use_hash,
                              'include_ai_translated': settings.opensubtitlescom.include_ai_translated,
+                             'include_machine_translated': settings.opensubtitlescom.include_machine_translated,
                              'api_key': 's38zmzVlW7IlYruWi7mHwDYl2SfMQoC1'
                              },
         'napiprojekt': {'only_authors': settings.napiprojekt.only_authors,

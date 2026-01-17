@@ -166,7 +166,8 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
 
     video_types = (Episode, Movie)
 
-    def __init__(self, username=None, password=None, use_hash=True, include_ai_translated=False, api_key=None):
+    def __init__(self, username=None, password=None, use_hash=True, include_ai_translated=False, api_key=None,
+                 include_machine_translated=False):
         if not all((username, password)):
             raise ConfigurationError('Username and password must be specified')
 
@@ -186,6 +187,7 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
         self.video = None
         self.use_hash = use_hash
         self.include_ai_translated = include_ai_translated
+        self.include_machine_translated = include_machine_translated
         self._started = None
 
     def initialize(self):
@@ -379,7 +381,8 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
                         continue
 
                 # ignore machine translated subtitles
-                if 'machine_translated' in item['attributes'] and item['attributes']['machine_translated']:
+                if ('machine_translated' in item['attributes'] and item['attributes']['machine_translated'] and not
+                        self.include_machine_translated):
                     logger.debug("Skipping machine translated subtitles")
                     continue
 

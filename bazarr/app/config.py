@@ -297,6 +297,7 @@ validators = [
     Validator('opensubtitlescom.password', must_exist=True, default='', is_type_of=str, cast=str),
     Validator('opensubtitlescom.use_hash', must_exist=True, default=True, is_type_of=bool),
     Validator('opensubtitlescom.include_ai_translated', must_exist=True, default=False, is_type_of=bool),
+    Validator('opensubtitlescom.include_machine_translated', must_exist=True, default=False, is_type_of=bool),
 
     # napiprojekt section
     Validator('napiprojekt.only_authors', must_exist=True, default=False, is_type_of=bool),
