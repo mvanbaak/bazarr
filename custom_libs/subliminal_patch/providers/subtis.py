@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
+import struct
 from json import JSONDecodeError
 from typing import TYPE_CHECKING
 from urllib.parse import quote
@@ -20,7 +21,7 @@ from subzero.language import Language
 if TYPE_CHECKING:
     from subliminal.video import Video as SubtitleVideo
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +74,9 @@ class SubtisSubtitle(Subtitle):
 class SubtisProvider(Provider):
     """Subtis subtitle provider for Spanish language subtitles.
 
-    Searches the subt.is API for subtitles by matching video file name
-    and size. Falls back to fuzzy matching by filename only if exact
-    match fails. Currently supports movies only.
+    Searches the subt.is API for subtitles using a cascade of increasingly
+    broad matching strategies (hash -> bytes -> filename -> alternative).
+    Currently supports movies only.
     """
 
     languages: set[Language] = {Language.fromalpha2("es")}
@@ -103,13 +104,54 @@ class SubtisProvider(Provider):
     def _encode_filename(self, filename: str) -> str:
         return quote(filename, safe="")
 
-    def _build_subtitle_url(self, file_size: int, filename: str) -> str:
+    def _build_hash_url(self, video_hash: str) -> str:
+        return f"{API_BASE_URL}/subtitle/find/file/hash/{video_hash}"
+
+    def _build_bytes_url(self, file_size: int) -> str:
+        return f"{API_BASE_URL}/subtitle/find/file/bytes/{file_size}"
+
+    def _build_filename_url(self, filename: str) -> str:
         encoded = self._encode_filename(filename)
-        return f"{API_BASE_URL}/subtitle/file/name/{file_size}/{encoded}"
+        return f"{API_BASE_URL}/subtitle/find/file/name/{encoded}"
 
     def _build_alternative_url(self, filename: str) -> str:
         encoded = self._encode_filename(filename)
         return f"{API_BASE_URL}/subtitle/file/alternative/{encoded}"
+
+    def _compute_video_hash(self, file_path: str) -> str | None:
+        """Compute OpenSubtitles hash for a video file.
+
+        Hash is: size + checksum(first 64KB) + checksum(last 64KB)
+        """
+        try:
+            file_size = os.path.getsize(file_path)
+            if file_size <= 0:
+                return None
+
+            def _checksum_at(offset: int, length: int) -> int:
+                checksum = 0
+                with open(file_path, "rb") as handle:
+                    handle.seek(offset)
+                    data = handle.read(length)
+                if not data:
+                    return 0
+                padding = (8 - (len(data) % 8)) % 8
+                if padding:
+                    data += b"\0" * padding
+                for chunk in struct.iter_unpack("<Q", data):
+                    checksum += chunk[0]
+                return checksum
+
+            chunk_size = min(65536, file_size)
+            head_sum = _checksum_at(0, chunk_size)
+            tail_offset = max(file_size - chunk_size, 0)
+            tail_sum = _checksum_at(tail_offset, chunk_size)
+
+            file_hash = (file_size + head_sum + tail_sum) & 0xFFFFFFFFFFFFFFFF
+            return f"{file_hash:016x}"
+        except OSError as error:
+            logger.warning("Unable to compute hash for %s: %s", file_path, error)
+            return None
 
     def _parse_api_response(
         self,
@@ -180,42 +222,39 @@ class SubtisProvider(Provider):
 
         filename = os.path.basename(video.name)
 
-        # Try primary search (exact match by size + filename)
+        video_hash: str | None = None
+        if os.path.exists(video.name):
+            video_hash = self._compute_video_hash(video.name)
+
+        cascade_steps: list[tuple[str, bool, str]] = []
+        if video_hash:
+            cascade_steps.append((self._build_hash_url(video_hash), True, "hash"))
         if video.size:
-            primary_url = self._build_subtitle_url(video.size, filename)
-            logger.debug("Trying primary search for %s", filename)
-            parsed = self._fetch_subtitle(primary_url, filename)
+            cascade_steps.append((self._build_bytes_url(video.size), True, "bytes"))
+        cascade_steps.append((self._build_filename_url(filename), True, "name"))
+        cascade_steps.append(
+            (self._build_alternative_url(filename), False, "alternative")
+        )
+
+        for url, is_synced, method in cascade_steps:
+            parsed = self._fetch_subtitle(url, filename)
             if parsed:
                 subtitle_link, title_name = parsed
-                logger.debug("Found subtitle via primary search")
+                logger.debug(
+                    "Found subtitle via cascade search (%s) for %s",
+                    method,
+                    filename,
+                )
                 return [
                     SubtisSubtitle(
                         language=language,
                         video=video,
-                        page_link=primary_url,
+                        page_link=url,
                         title=title_name,
                         download_url=subtitle_link,
-                        is_synced=True,
+                        is_synced=is_synced,
                     )
                 ]
-
-        # Fallback to alternative search (fuzzy match by filename only)
-        alternative_url = self._build_alternative_url(filename)
-        logger.debug("Trying alternative search for %s", filename)
-        parsed = self._fetch_subtitle(alternative_url, filename)
-        if parsed:
-            subtitle_link, title_name = parsed
-            logger.debug("Found subtitle via alternative search (fuzzy)")
-            return [
-                SubtisSubtitle(
-                    language=language,
-                    video=video,
-                    page_link=alternative_url,
-                    title=title_name,
-                    download_url=subtitle_link,
-                    is_synced=False,
-                )
-            ]
 
         logger.info("No subtitle found for %s", filename)
         return []
