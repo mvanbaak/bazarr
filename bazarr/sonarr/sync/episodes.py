@@ -3,12 +3,13 @@
 import os
 import logging
 import operator
-from constants import MINIMUM_VIDEO_SIZE
+import semver
 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from functools import reduce
 
+from constants import MINIMUM_VIDEO_SIZE
 from app.database import database, TableShows, TableEpisodes, delete, update, insert, select, get_exclusion_clause
 from app.config import settings
 from utilities.path_mappings import path_mappings
@@ -78,16 +79,22 @@ def sync_episodes(series_id, defer_search=False, is_signalr=False):
     # Get episodes data for a series from Sonarr
     episodes = get_episodes_from_sonarr_api(apikey_sonarr=apikey_sonarr, series_id=series_id)
     if episodes:
-        # For Sonarr v3, we need to update episodes to integrate the episodeFile API endpoint results
-        # We skip this if the episodes already contain an episodeFile structure (added with Sonarr v4.0.9.2421)
-        if (not get_sonarr_info.is_legacy() and
-                any([episode.get('hasFile') and not episode.get('episodeFileId') for episode in episodes])):
+        if get_sonarr_info.is_legacy():
+            # We skip this for legacy versions of Sonarr since it already have episodeFile structure included
+            pass
+        elif get_sonarr_info.semver() >= semver.Version(*(4, 0, 9, 2421)):
+            # We skip this if the episodes already contain an episodeFile structure (added with Sonarr v4.0.9.2421)
+            pass
+        else:
+            # For Sonarr v3 or greater but lower than 4.0.9.2421, we need to update episodes to integrate the
+            # episodeFile API endpoint results
             episodeFiles = get_episodesFiles_from_sonarr_api(apikey_sonarr=apikey_sonarr, series_id=series_id)
-            for episode in episodes:
-                if episodeFiles and episode['hasFile']:
-                    item = [x for x in episodeFiles if x['id'] == episode['episodeFileId']]
-                    if item:
-                        episode['episodeFile'] = item[0]
+            if episodeFiles:
+                for episode in episodes:
+                    if episodeFiles and episode['hasFile']:
+                        item = [x for x in episodeFiles if x['id'] == episode['episodeFileId']]
+                        if item:
+                            episode['episodeFile'] = item[0]
 
         sync_monitored = settings.sonarr.sync_only_monitored_series and settings.sonarr.sync_only_monitored_episodes
         if sync_monitored:
