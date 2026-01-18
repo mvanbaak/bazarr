@@ -312,8 +312,8 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
             title = self.video.title
 
         imdb_id = None
-        if isinstance(self.video, Episode) and self.video.series_imdb_id:
-            imdb_id = self.sanitize_external_ids(self.video.series_imdb_id)
+        if isinstance(self.video, Episode) and self.video.imdb_id:
+            imdb_id = self.sanitize_external_ids(self.video.imdb_id)
         elif isinstance(self.video, Movie) and self.video.imdb_id:
             imdb_id = self.sanitize_external_ids(self.video.imdb_id)
 
@@ -333,14 +333,16 @@ class OpenSubtitlesComProvider(ProviderRetryMixin, Provider):
         # query parameters must be alphabetically ordered to prevent redirect
         if isinstance(self.video, Episode):
             params = [('episode_number', self.video.episode),
-                      ('imdb_id', imdb_id if not title_id else None),
+                      ('imdb_id', imdb_id),
                       ('languages', langs),
                       ('moviehash', file_hash),
-                      ('parent_feature_id', title_id if title_id else None),
+                      ('parent_feature_id', title_id),
+                      ('parent_imdb_id', self.sanitize_external_ids(self.video.series_imdb_id) if
+                      self.video.series_imdb_id else None),
                       ('season_number', self.video.season)]
         else:
-            params = [('id', title_id if title_id else None),
-                      ('imdb_id', imdb_id if not title_id else None),
+            params = [('id', title_id),
+                      ('imdb_id', imdb_id),
                       ('languages', langs),
                       ('moviehash', file_hash)]
 
