@@ -953,13 +953,12 @@ class PlexWebhookCreate(Resource):
             instance_name = settings.general.get('instance_name', 'Bazarr')
             instance_param = quote_plus(instance_name)
             
+            scheme = 'https' if request.is_secure else 'http'
+            host = request.host
             if configured_base_url:
-                webhook_url = f"{configured_base_url}/api/webhooks/plex?apikey={apikey}&instance={instance_param}"
-                logger.info(f"Using configured base URL for webhook: {configured_base_url}/api/webhooks/plex (instance: {instance_name})")
+                webhook_url = f"{scheme}://{host}{configured_base_url}/api/webhooks/plex?apikey={apikey}&instance={instance_param}"
+                logger.info(f"Using configured base URL for webhook: {scheme}://{host}{configured_base_url}/api/webhooks/plex (instance: {instance_name})")
             else:
-                # Fall back to using the current request's host
-                scheme = 'https' if request.is_secure else 'http'
-                host = request.host
                 webhook_url = f"{scheme}://{host}/api/webhooks/plex?apikey={apikey}&instance={instance_param}"
                 logger.info(f"Using request host for webhook (no base URL configured): {scheme}://{host}/api/webhooks/plex (instance: {instance_name})")
                 logger.info("Note: If Bazarr is behind a reverse proxy, configure Base URL in General Settings for better reliability")
